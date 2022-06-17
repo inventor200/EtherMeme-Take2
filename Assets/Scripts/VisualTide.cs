@@ -1,0 +1,251 @@
+/*
+MIT License
+
+Copyright (c) 2022 Joseph Cramsey
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class VisualTide : MonoBehaviour {
+
+    public ParticleSystem sparkles;
+    public int sparkleChance = 25;
+    public Vector2 sparkleTimeRange = new Vector2(5f, 30f);
+    public float moodySparkMultiplier = 4f;
+    public AnimationCurve sparkleVolumeCurve;
+
+    public bool canTeleport {
+        get {
+            return teleportCooldown <= 0;
+        }
+    }
+    public float sparkleVolume {
+        get {
+            return Mathf.Clamp01(Mathf.Max(sparkleVolumeCurve.Evaluate(Mathf.Clamp01(sparkleVolumeTime)), glowVolume - 0.5f) - 0.1f);
+        }
+    }
+
+	private SpriteRenderer rend;
+    private EtherSampler etherSampler;
+    private float standardValue;
+    private Vector2 perlinSeed;
+    private float teleportCooldown = 0;
+    private PingChannel[] channels;
+    private float casualSparkleTimer;
+    private float mood = 0;
+    private float sparkleVolumeTime = 1f;
+    private float glowVolume = 0f;
+
+    // Start is called before the first frame update
+    void Awake() {
+        ResetSparkles();
+        casualSparkleTimer *= Random.Range(0f, 1f);
+        standardValue = Random.Range(0.25f, 0.5f);
+        perlinSeed = Random.insideUnitCircle * 1000;
+        rend = GetComponent<SpriteRenderer>();
+        rend.color = Color.HSVToRGB(0f, 0f, standardValue);
+        channels = new PingChannel[(int)PingChannelID.Count];
+        etherSampler = GameObject.FindGameObjectWithTag("EtherSampler").GetComponent<EtherSampler>();
+        for (int i = 0; i < channels.Length; i++) {
+            int colorIndex = i / 2;
+            Color sampledColor;
+            switch (colorIndex) {
+                default:
+                case 0:
+                    sampledColor = etherSampler.playerHue;
+                    break;
+                case 1:
+                    sampledColor = etherSampler.targetHue;
+                    break;
+                case 2:
+                    sampledColor = etherSampler.predatorHue;
+                    break;
+                case 3:
+                    sampledColor = etherSampler.freighterHue;
+                    break;
+            }
+            float hue = EtherSampler.GetHueFromColor(sampledColor);
+            channels[i] = new PingChannel((PingChannelID)i, i % 2 == 1, hue);
+        }
+    }
+
+    void Update() {
+        float perlin = Mathf.PerlinNoise(perlinSeed.x + Time.time, perlinSeed.y) * 0.5f;
+        float delta = (perlin * perlin) + 0.25f;
+
+        float pingValue = 0;
+        float pingHue = 0;
+        float totalHue = 0;
+
+        for (int i = 0; i < channels.Length; i++) {
+            PingChannel channel = channels[i];
+            float strength = channel.strength;
+            if (channel.askChannel) {
+                float waveTime = Mathf.Repeat(perlinSeed.x + Time.time * 12, Mathf.PI * 2);
+                strength *= Mathf.Sin(waveTime);
+            }
+            pingHue += channel.hue * strength;
+            totalHue += strength;
+            pingValue = Mathf.Max(pingValue, strength);
+        }
+
+        pingHue /= totalHue;
+
+        float masterValue = Mathf.Clamp01((standardValue * delta) + (pingValue * 0.75f));
+        glowVolume = masterValue;
+        masterValue = Mathf.Clamp01(masterValue
+            - (Mathf.Clamp01(1f - etherSampler.altitude) * 0.25f))
+            * Mathf.Clamp01(2f - etherSampler.altitude);
+
+        rend.color = Color.HSVToRGB(pingHue, pingValue, masterValue);
+        if (!canTeleport) {
+            teleportCooldown -= Time.deltaTime;
+        }
+        
+        bool makeSparkles = false;
+        for (int i = 0; i < channels.Length; i++) {
+            channels[i].Sink(Time.deltaTime);
+            if (channels[i].isSparkly) {
+                makeSparkles |= Random.Range(0, 100) < sparkleChance;
+            }
+        }
+
+        float sparkleSpeedMult = Mathf.Lerp(1f, moodySparkMultiplier, Mathf.Clamp01(Mathf.Abs(mood)));
+        casualSparkleTimer -= Time.deltaTime * sparkleSpeedMult;
+        if (casualSparkleTimer <= 0) {
+            makeSparkles = true;
+        }
+
+        if (makeSparkles) {
+            if (etherSampler.altitude <= 1.1f) {
+                ParticleSystem.MainModule particleMain = sparkles.main;
+
+                Color sparkleColor = Color.HSVToRGB(pingHue, pingValue, 1f);
+                if (mood > 0) {
+                    sparkleColor = Color.Lerp(sparkleColor, Color.cyan, Mathf.Clamp01(mood));
+                }
+                else {
+                    sparkleColor = Color.Lerp(sparkleColor, Color.red, Mathf.Clamp01(-mood));
+                }
+
+                particleMain.startColor = sparkleColor;
+                sparkles.Play();
+            }
+            ResetSparkles();
+            sparkleVolumeTime = 0f;
+        }
+
+        sparkleVolumeTime = Mathf.Clamp01(sparkleVolumeTime + Time.deltaTime);
+    }
+
+    private void ResetSparkles() {
+        casualSparkleTimer = Random.Range(sparkleTimeRange.x, sparkleTimeRange.y);
+        sparkleVolumeTime = 1f;
+    }
+
+    public void FinishTeleport() {
+        teleportCooldown = 0.5f;
+        for (int i = 0; i < channels.Length; i++) {
+            channels[i].ResetPing();
+        }
+        sparkles.Stop();
+        sparkleVolumeTime = 1f;
+    }
+
+    public void Ping(float distanceOffset, PingChannelID id) {
+        channels[(int)id].Ping(distanceOffset);
+    }
+
+    void OnCollisionEnter2D(Collision2D col) {
+        if (col.transform.tag == "EtherShip") {
+            ShipInEther playerShip = col.gameObject.GetComponent<ShipInEther>();
+            if (playerShip != null) {
+                if (playerShip.currentSpeed == ShipSpeed.Cruise) {
+                    Ping(0, PingChannelID.Player_WasSeen);
+                }
+                else if (playerShip.currentSpeed == ShipSpeed.AheadFull) {
+                    Ping(0, PingChannelID.Predator_WasSeen);
+                }
+            }
+        }
+    }
+}
+
+public class PingChannel {
+
+    public PingChannelID id { private set; get; }
+    public bool askChannel { private set; get; }
+    public float strength {
+        get {
+            float pingAmount = Mathf.Clamp01(1f - Mathf.Abs(_strength - 1f));
+            return pingAmount * pingAmount;
+        }
+    }
+    private float _strength;
+    private int sparkleStage;
+    public bool isSparkly {
+        get {
+            return sparkleStage == 1;
+        }
+    }
+    public float hue { private set; get; }
+
+    public PingChannel(PingChannelID id, bool askChannel, float hue) {
+        this.id = id;
+        this.askChannel = askChannel;
+        this._strength = 0;
+        this.sparkleStage = 2;
+        this.hue = hue;
+    }
+
+    public void ResetPing() {
+        _strength = 0;
+        sparkleStage = 2;
+    }
+
+    public void Ping(float distanceOffset) {
+        _strength = 1f + distanceOffset;
+        sparkleStage = 0;
+    }
+
+    public void Sink(float dx) {
+        _strength = Mathf.Clamp(_strength - dx, 0, 8);
+        if (_strength <= 1f) {
+            if (sparkleStage < 2) {
+                sparkleStage++;
+            }
+        }
+    }
+}
+
+public enum PingChannelID {
+    Player_WasSeen = 0,
+    Player_WasAsked = 1,
+    Target_WasSeen = 2,
+    Target_WasAsked = 3,
+    Predator_WasSeen = 4,
+    Predator_WasAsked = 5,
+    Freighter_WasSeen = 6,
+    Freighter_WasAsked = 7,
+    Count = 8
+}
