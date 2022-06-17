@@ -31,3 +31,13 @@ the Ether!
 
 This game is currently a work in progress, and is still in the early
 alpha stages of development.
+
+### Credit
+
+Special thanks to @Oxeren for their [Distance Shader](https://github.com/Oxeren/Blur-Distance-Blur-for-Unity-Postprocessing-Stack-v2)
+for Unity3D; the old blur shader was removed from Postprocessing when the
+tech graduated to the V2 stack, and all the alternatives are for the
+universal pipeline.
+
+Without Oxeren's repo, I would have lost a lot of time trying to write a
+renderer for the boid-based neurotides.
