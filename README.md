@@ -34,7 +34,8 @@ alpha stages of development.
 
 ### Credit
 
-Special thanks to @Oxeren for their [Distance Shader](https://github.com/Oxeren/Blur-Distance-Blur-for-Unity-Postprocessing-Stack-v2)
+Special thanks to [Oxeren](https://github.com/Oxeren) for their
+[Distance Shader](https://github.com/Oxeren/Blur-Distance-Blur-for-Unity-Postprocessing-Stack-v2)
 for Unity3D; the old blur shader was removed from Postprocessing when the
 tech graduated to the V2 stack, and all the alternatives are for the
 universal pipeline.
