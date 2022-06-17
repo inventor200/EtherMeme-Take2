@@ -1,5 +1,6 @@
 # EtherMeme
 ## A surreal stealth hunting game
+### Premise
 
 One day, the strange, amorphous Ether appeared in orbit of Earth.
 It seemed to be a colony of hyper-dimensional neurons.
@@ -25,3 +26,8 @@ Make sure you don't fall into any of their traps, though!
 
 And be even more careful of the predatory tides that lurk deep within
 the Ether!
+
+### Status
+
+This game is currently a work in progress, and is still in the early
+alpha stages of development.
