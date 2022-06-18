@@ -60,6 +60,14 @@ public class ShipInEther : MonoBehaviour {
     private Vector2 moveDir = Vector2.zero;
     private float arrowSize = 1f;
     public Vector2 expectedPosition { private set; get; }
+    private float expectedAcceleration = 0;
+    private bool wasInteractingWithTides = false;
+    private bool interactingWithTides = true;
+    private float altitudeSpeedScale {
+        get {
+            return 1f + (Mathf.Clamp01(currentAltitude - 1f) * 9f);
+        }
+    }
 
     void Awake() {
         ri = GetComponent<Rigidbody2D>();
@@ -77,7 +85,7 @@ public class ShipInEther : MonoBehaviour {
     }
 
     // Update is called once per frame
-    void Update() {
+    void Update() { // TODO: Engine is silent when in stealth
         pingMagnitude = Mathf.Clamp01(pingMagnitude - (Time.deltaTime / 2f));
         Color haloColor = Color.HSVToRGB(pingHue, 1f, pingMagnitude);
         string stealthInd = currentSpeed == ShipSpeed.Stealth ? "\n[Stealth]" : "";
@@ -87,7 +95,7 @@ public class ShipInEther : MonoBehaviour {
         }
 
         ShipSpeed nextSpeed = ShipSpeed.Halted;
-        Vector2 nextMoveDir = Vector2.zero;
+        Vector2 nextMoveDir = moveDir;
 
         if (currentSpeed == ShipSpeed.Stealth) {
             nextSpeed = ShipSpeed.Stealth;
@@ -102,25 +110,27 @@ public class ShipInEther : MonoBehaviour {
         else {
             nextSpeed = ShipSpeed.Halted;
 
-            if (Input.GetKey(KEY_NORTH)) {
-                nextSpeed = ShipSpeed.Cruise;
-                nextMoveDir += Vector2.up;
-            }
-            if (Input.GetKey(KEY_WEST)) {
-                nextSpeed = ShipSpeed.Cruise;
-                nextMoveDir += Vector2.left;
-            }
-            if (Input.GetKey(KEY_SOUTH)) {
-                nextSpeed = ShipSpeed.Cruise;
-                nextMoveDir += Vector2.down;
-            }
-            if (Input.GetKey(KEY_EAST)) {
-                nextSpeed = ShipSpeed.Cruise;
-                nextMoveDir += Vector2.right;
-            }
+            if (currentAltitude > 0.5f) { // No moving when buried
+                if (Input.GetKey(KEY_NORTH)) {
+                    nextSpeed = ShipSpeed.Cruise;
+                    nextMoveDir += Vector2.up;
+                }
+                if (Input.GetKey(KEY_WEST)) {
+                    nextSpeed = ShipSpeed.Cruise;
+                    nextMoveDir += Vector2.left;
+                }
+                if (Input.GetKey(KEY_SOUTH)) {
+                    nextSpeed = ShipSpeed.Cruise;
+                    nextMoveDir += Vector2.down;
+                }
+                if (Input.GetKey(KEY_EAST)) {
+                    nextSpeed = ShipSpeed.Cruise;
+                    nextMoveDir += Vector2.right;
+                }
 
-            if (nextSpeed == ShipSpeed.Cruise && Input.GetKey(KEY_AHEAD_FULL_MOD)) {
-                nextSpeed = ShipSpeed.AheadFull;
+                if (nextSpeed == ShipSpeed.Cruise && Input.GetKey(KEY_AHEAD_FULL_MOD)) {
+                    nextSpeed = ShipSpeed.AheadFull;
+                }
             }
 
             if (Input.GetKeyDown(KEY_ASCEND) && goalAltitude < 2) {
@@ -132,31 +142,42 @@ public class ShipInEther : MonoBehaviour {
 
             if (Input.GetKeyDown(KEY_STEALTH)) {
                 nextSpeed = ShipSpeed.Stealth;
-                nextMoveDir = Vector2.zero;
+                //nextMoveDir = Vector2.zero; // expectAcceleration will slow us down
             }
         }
+
+        currentAltitude = Mathf.MoveTowards(currentAltitude, goalAltitude, 0.25f * Time.deltaTime);
 
         currentSpeed = nextSpeed;
         moveDir = nextMoveDir.normalized;
 
-        currentAltitude = Mathf.MoveTowards(currentAltitude, goalAltitude, 0.25f * Time.deltaTime);
-
         float speedScale = 0;
+        float expectedSpeed = 0;
 
         if ((int)currentSpeed > (int)ShipSpeed.Halted) {
             float nextAngle = Mathf.Atan2(moveDir.y, moveDir.x) * Mathf.Rad2Deg;
             float currentAngle = arrow.localRotation.eulerAngles.z;
 
             arrow.localRotation = Quaternion.Euler(0, 0, Mathf.MoveTowardsAngle(currentAngle, nextAngle, 360f * Time.deltaTime));
-            speedScale = ri.velocity.magnitude / SPEED_MODES[1][1];
+            speedScale = ri.velocity.magnitude / (SPEED_MODES[1][1] * altitudeSpeedScale);
 
-            expectedPosition += moveDir * SPEED_MODES[(int)currentSpeed][1] * Time.deltaTime;
-            float expectedX = Mathf.Repeat(expectedPosition.x + 5f, 10f);
-            float expectedY = Mathf.Repeat(expectedPosition.y + 5f, 10f);
-            expectedX = (expectedX - 5f) * -51.2f;
-            expectedY = (expectedY - 5f) * -51.2f;
-            mapGrid.anchoredPosition = new Vector2(expectedX, expectedY);
+            expectedAcceleration = Mathf.MoveTowards(expectedAcceleration, 1f, Time.deltaTime);
+            expectedSpeed = SPEED_MODES[(int)currentSpeed][1];
         }
+        else {
+            expectedAcceleration = Mathf.MoveTowards(expectedAcceleration, 0f, Time.deltaTime);
+            expectedSpeed = SPEED_MODES[0][1]; // We're actually slowing down from this
+        }
+
+        expectedPosition += moveDir * expectedSpeed * expectedAcceleration * Time.deltaTime;
+        if (currentAltitude > 1.5f) {
+            expectedPosition = (Vector2)transform.position; // Calibrate when ascended
+        }
+        float expectedX = Mathf.Repeat(expectedPosition.x + 5f, 10f);
+        float expectedY = Mathf.Repeat(expectedPosition.y + 5f, 10f);
+        expectedX = (expectedX - 5f) * -51.2f;
+        expectedY = (expectedY - 5f) * -51.2f;
+        mapGrid.anchoredPosition = new Vector2(expectedX, expectedY);
 
         float nextSize = currentSpeed == ShipSpeed.Stealth ? 0f : 1f;
         arrowSize = Mathf.Lerp(arrowSize, nextSize, 5 * Time.deltaTime);
@@ -165,19 +186,29 @@ public class ShipInEther : MonoBehaviour {
         halo.color = haloColor;
 
         ambientSounds.velocityMix = speedScale;
+
+        interactingWithTides = Mathf.Abs(1f - currentAltitude) < 0.5f;
     }
 
     void FixedUpdate() {
+        if (wasInteractingWithTides != interactingWithTides) {
+            wasInteractingWithTides = interactingWithTides;
+            gameObject.layer = LayerMask.NameToLayer(interactingWithTides ? "Standard" : "NonStandard");
+        }
+        
+        float nonStandardMass = 100000;
+        float nonStandardDrag = 100f;
         if (currentSpeed == ShipSpeed.Stealth) {
-            ri.mass = 100;
-            ri.drag = 0f;
+            ri.mass = interactingWithTides ? 100 : nonStandardMass;
+            ri.drag = interactingWithTides ? 0f : nonStandardDrag;
         }
         else {
-            ri.mass = 500;
-            ri.drag = 10f;
+            ri.mass = interactingWithTides ? 500 : nonStandardMass;
+            ri.drag = interactingWithTides ? 10f : nonStandardDrag;
             if (currentSpeed != ShipSpeed.Halted) {
-                float speed = SPEED_MODES[(int)currentSpeed][0];
-                ri.AddForce(moveDir * ri.mass * speed * 7.5f * Time.deltaTime);
+                float dragAdjustment = ri.drag * 0.75f;
+                float speed = SPEED_MODES[(int)currentSpeed][0] * altitudeSpeedScale;
+                ri.AddForce(moveDir * ri.mass * speed * dragAdjustment * Time.deltaTime);
             }
         }
     }

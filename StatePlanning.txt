@@ -1,0 +1,69 @@
+Action      Adds Direct Trace   Adds Ask Trace  Recalls Direct Trace    Recalls Ask Trace   Retains Movement    Can Be Seen     Can See     Vulnerable  Creates Manic Tides     Creates Hostile Tides
+Idle            Y                   N               N                       Y                   Y                   Y               Y           Y           N                       N
+Bury[1]         Min**               N               N                       N                   N*                  N**             N           N           N                       N
+Ascend[2]       [3]                 N               [3]                     N                   Y++                 N               Y           N           N                       N
+Stealth         N***                N               N                       N                   N                   N***            Y           Y           N                       N
+Cruising        Y+                  N               N                       Y                   Y                   Y               Y           Y           Min                     N
+Ahead-Full      Y++                 N               N                       Y****               Y+                  Y               Y           Y           N                       Min
+Ping            N                   Y               Y                       N                   N/A                 N/A             N/A         N/A         N                       N
+Excite[4]       Y++                 N               N                       N                   N/A                 Y               Y           Y           Y                       N
+Seizure[5]      N                   N               N                       N                   N/A                 Y               Y           Y           N                       Y++
+
+Idle: Sacrifice nothing, but will add trace
+Bury: Sacrifice movement and sight for protection and invisibility; minimal trace as hint
+Ascend: Sacrifice interaction for intel
+Stealth: Sacrifice navigation and pings for invisibility and near-zero trace
+
+   * Will be held in place, but cannot move on will.
+  ** Needs to be in close proximity on upper layer; is not visible to hostile tides.
+ *** Will show up on map, but will blend in perfectly with tides.
+     Will only be revealed in hostile or manic tides.
+     Will not be hidden from predators.
+**** "Asked-Predator" will flash when recalling ask-trace from anyone going ahead-full.
+
+[1] Cannot stay buried forever; eventually will risk ship after time expires.
+    Probes can stay buried forever, though, and will leave no trace.
+
+[2] Nothing can remain ascended for very long. Predators will pull prey up to
+    "drown" them via ascension. Movement when ascended is 10x faster.
+    Bring ascended recalibrates your expected position.
+
+[3] Ships listening for a target will get immediate results if the target is also
+    ascended, and the trace will vanish instantly when the target descends.
+    Trace also provides zero direction component when ascended; results are all-
+    encompassing.
+
+[4] The "Excite" action does a few things by making manic tides:
+    1. Takes 30 sec to complete.
+    2. Wards away predators (when complete).
+    3. Makes you VERY visible.
+    4. Creates a zone where stealth fails (when complete).
+    5. Dumps a lot of your trace into the area, creating a strong, all-surrounding response if pinged.
+    6. Makes trace last a LOT longer.
+
+[5] The "Seizure" ping action can only be performed 3 times, and does a few things:
+    1. Anyone caught at the scene of a seizures gets 1 of 2 strikes.
+    2. At 2 strikes, they are forcefully ejected, and their destination is dictated by who controls the tether.
+    3. The region becomes instantly and PERMANENTLY hostile (ships cannot remain there for long, and buried ships have VERY little time to stay buried).
+    4. Two new predators are born.
+    5. A ship can launch their single decoy and enter stealth, in order to evade the predator if it's their first strike.
+    6. At the second strike, decoys will not work.
+       Because of this, if the player used a seizure ping, and the target was not there, the decoy can be used to bail.
+       However, if the target WAS there, then a second can be used to cancel out the target's decoy.
+
+PROBE TYPES:
+    Decoy (equipped: 1 | Non-recoverable)
+        When deployed, the ship is automatically put into stealth, and will be completely hidden from predators and all tides
+        until they next leave stealth mode.
+    Hacker (equipped: 3 | Recoverable* | Sinks after use)
+        Ascends, and then buries itself, carrying with it calibrated coordinates, and tether ownership status.
+        When deployed in attack mode, it will retake the tether after 10 seconds, and not return.
+    Spy (equipped: 2 | Recoverable | Rendezvous after use)
+        Will wander in a set search pattern, ping, and record all traces found.
+        This probe does not leave a trace.
+        The enemy can see this probe ping, but the probe itself will not show up.
+        Predators can sometimes attack probes.
+        When it reaches its final instruction, it will oscillate between being buried and ascending, in order to hold position and transmit updates
+        to its owner when the owner is ascended at the same time. The owner will have a timer that goes off when the probe should have finished its
+        mission, so the player knows when to ascend to listen for a message.
+        If two spy probes are active, they will try to stay outside of some distance from each other, to maximize the search area.

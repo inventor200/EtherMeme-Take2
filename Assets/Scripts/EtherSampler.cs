@@ -54,6 +54,7 @@ public class EtherSampler : MonoBehaviour {
     private bool pingRequiresSort = true;
     private float lastSparkleVolume = 0;
     public float altitude { private set; get; }
+    public Vector2 greaterTideDirection { private set; get; }
     private Vector2 greaterTideSeed;
     private ShipInEther playerShip;
 
@@ -126,6 +127,7 @@ public class EtherSampler : MonoBehaviour {
         float greaterTideHeave = Mathf.PerlinNoise(greaterTideSeed.y + Time.time, greaterTideSeed.x) * 200f;
         float greaterTideX = Mathf.Cos(greaterTideAngle);
         float greaterTideY = Mathf.Sin(greaterTideAngle);
+        greaterTideDirection = new Vector2(greaterTideX, greaterTideY) * greaterTideHeave;
 
         //Debug.Log("" + greaterTideX + ", " + greaterTideY + " | " + greaterTideHeave);
 
