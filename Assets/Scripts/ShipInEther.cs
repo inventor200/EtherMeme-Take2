@@ -24,6 +24,7 @@ SOFTWARE.
 
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine.Rendering.PostProcessing;
 using UnityEngine.UI;
 using UnityEngine;
 
@@ -46,17 +47,20 @@ public class ShipInEther : MonoBehaviour {
     };
 	public SpriteRenderer halo;
     public Transform arrow;
-    public EtherSampler etherSampler;
+    public PostProcessVolume postProcessor;
+    private Vignette vignette;
     [Space]
     public AmbientSounds ambientSounds;
-    public RectTransform mapGrid;
-    public Image standardGrid;
-    public Image ascendedGrid;
-    public float gridAlpha = 0.1f;
+    public RectTransform rootGrid;
+    public AnimationCurve rootScaleCurve;
+    public TopDownGrid standardGrid;
+    public TopDownGrid ascendedGrid;
+    public AnimationCurve vignetteStrengths;
     public TMPro.TextMeshProUGUI positionText;
     public float currentAltitude { private set; get; } = 2;
     private int goalAltitude = 1;
 
+    private EtherSampler etherSampler;
     private Rigidbody2D ri;
     private float pingHue = 0;
     private float pingMagnitude = 0;
@@ -69,17 +73,17 @@ public class ShipInEther : MonoBehaviour {
     private float expectedAcceleration = 0;
     private bool wasInteractingWithTides = false;
     private bool interactingWithTides = true;
-    private bool isAscended {
+    public bool isAscended {
         get {
             return currentAltitude > 1f + STANDARD_DEPTH_TOLERANCE;
         }
     }
-    private bool isBuried {
+    public bool isBuried {
         get {
             return currentAltitude < (1f - STANDARD_DEPTH_TOLERANCE);
         }
     }
-    private bool isAtStandardDepth {
+    public bool isAtStandardDepth {
         get {
             return (currentAltitude >= (1f - STANDARD_DEPTH_TOLERANCE))
                 && (currentAltitude <= 1f + STANDARD_DEPTH_TOLERANCE);
@@ -87,6 +91,7 @@ public class ShipInEther : MonoBehaviour {
     }
 
     void Awake() {
+        etherSampler = GameObject.FindGameObjectWithTag("EtherSampler").GetComponent<EtherSampler>();
         ri = GetComponent<Rigidbody2D>();
         hues = new float[] {
             EtherSampler.GetHueFromColor(etherSampler.playerHue),
@@ -94,6 +99,7 @@ public class ShipInEther : MonoBehaviour {
             EtherSampler.GetHueFromColor(etherSampler.predatorHue),
             EtherSampler.GetHueFromColor(etherSampler.freighterHue)
         };
+        postProcessor.profile.TryGetSettings<Vignette>(out vignette);
     }
 
     // Start is called before the first frame update
@@ -104,8 +110,7 @@ public class ShipInEther : MonoBehaviour {
     // Update is called once per frame
     // TODO: Engine is silent when in stealth
     // TODO: Tides are visible when buried, but vignette is stronger
-    // TODO: Turn off tide rendering when ascended; it's visible through clouds now
-    // TODO: Refactor this class, and move as much rendering as possible to EtherSampler
+    // TODO: Refactor this class
     void Update() {
         pingMagnitude = Mathf.Clamp01(pingMagnitude - (Time.deltaTime / 2f));
         Color haloColor = Color.HSVToRGB(pingHue, 1f, pingMagnitude);
@@ -191,30 +196,31 @@ public class ShipInEther : MonoBehaviour {
         }
 
         expectedPosition += moveDir * expectedSpeed * expectedAcceleration * Time.deltaTime;
-        if (currentAltitude > 1.5f) {
-            expectedPosition = (Vector2)transform.position; // Calibrate when ascended
+        if (isAscended) {
+            expectedPosition = (Vector2)transform.position; // Recalibrate when ascended
         }
-        float totalScale = etherSampler.ascendedScale * etherSampler.cameraScale;
-        float halfCam = etherSampler.cameraScale / 2f;
-        float expectedX = Mathf.Repeat(expectedPosition.x + halfCam, totalScale);
-        float expectedY = Mathf.Repeat(expectedPosition.y + halfCam, totalScale);
-        expectedX = (expectedX - halfCam) * -51.2f;
-        expectedY = (expectedY - halfCam) * -51.2f;
-        mapGrid.anchoredPosition = (new Vector2(expectedX, expectedY)) / etherSampler.altitudeScale;
-        mapGrid.localScale = (new Vector3(1, 1, 1)) / etherSampler.altitudeScale;
-        float ascendedFactor = Mathf.Clamp01(currentAltitude - 1f);
-        standardGrid.color = new Color(1f, 1f, 1f, gridAlpha * (1f - ascendedFactor));
-        ascendedGrid.color = new Color(1f, 1f, 1f, gridAlpha * ascendedFactor);
 
+        // Adjust visual grid
+        float totalAltitudeScale = rootScaleCurve.Evaluate(Mathf.Clamp01(currentAltitude / 2f));
+        rootGrid.localScale = new Vector3(totalAltitudeScale, totalAltitudeScale, totalAltitudeScale);
+        standardGrid.AdjustTo(expectedPosition, currentAltitude, etherSampler.cameraScale);
+        ascendedGrid.AdjustTo(expectedPosition, currentAltitude, etherSampler.cameraScale);
+
+        // Adjust arrow
         float nextSize = currentSpeed == ShipSpeed.Stealth ? 0f : 1f;
         arrowSize = Mathf.Lerp(arrowSize, nextSize, 5 * Time.deltaTime);
         arrow.localScale = new Vector3(arrowSize, arrowSize, arrowSize);
         halo.transform.localScale = new Vector3(1 + arrowSize, 1 + arrowSize, 1 + arrowSize);
         halo.color = haloColor;
 
+        // Sounds get higher with speed
         ambientSounds.velocityMix = speedScale;
 
+        // Prepare to change collision layer, if necessary
         interactingWithTides = isAtStandardDepth;
+
+        // Control vignette intensity with altitude
+        vignette.intensity.value = Mathf.Clamp01(vignetteStrengths.Evaluate(currentAltitude / 2f));
     }
 
     void FixedUpdate() {

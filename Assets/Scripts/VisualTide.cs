@@ -52,7 +52,7 @@ public class VisualTide : MonoBehaviour {
     private float teleportCooldown = 0;
     private PingChannel[] channels;
     private float casualSparkleTimer;
-    private float mood = 0;
+    private float mood = 0; //TODO: Get from sample
     private float sparkleVolumeTime = 1f;
     private float glowVolume = 0f;
 
@@ -114,10 +114,16 @@ public class VisualTide : MonoBehaviour {
         float masterValue = Mathf.Clamp01((standardValue * delta) + (pingValue * 0.75f));
         glowVolume = masterValue;
         masterValue = Mathf.Clamp01(masterValue
-            - (Mathf.Clamp01(1f - etherSampler.altitude) * 0.25f))
-            * Mathf.Clamp01(2f - etherSampler.altitude);
+            * Mathf.Clamp01(2f - etherSampler.playerShip.currentAltitude));
+        
+        bool renderAtAll = masterValue > 0.01f;
+        if (rend.enabled != renderAtAll) {
+            rend.enabled = renderAtAll;
+        }
 
-        rend.color = Color.HSVToRGB(pingHue, pingValue, masterValue);
+        if (renderAtAll) {
+            rend.color = Color.HSVToRGB(pingHue, pingValue, masterValue);
+        }
         if (!canTeleport) {
             teleportCooldown -= Time.deltaTime;
         }
@@ -125,7 +131,7 @@ public class VisualTide : MonoBehaviour {
         bool makeSparkles = false;
         for (int i = 0; i < channels.Length; i++) {
             channels[i].Sink(Time.deltaTime);
-            if (channels[i].isSparkly) {
+            if (channels[i].isSparkly && renderAtAll) {
                 makeSparkles |= Random.Range(0, 100) < sparkleChance;
             }
         }
@@ -137,7 +143,7 @@ public class VisualTide : MonoBehaviour {
         }
 
         if (makeSparkles) {
-            if (etherSampler.altitude <= 1.1f) {
+            if (renderAtAll) {
                 ParticleSystem.MainModule particleMain = sparkles.main;
 
                 Color sparkleColor = Color.HSVToRGB(pingHue, pingValue, 1f);
@@ -155,7 +161,9 @@ public class VisualTide : MonoBehaviour {
             sparkleVolumeTime = 0f;
         }
 
-        sparkleVolumeTime = Mathf.Clamp01(sparkleVolumeTime + Time.deltaTime);
+        if (renderAtAll) {
+            sparkleVolumeTime = Mathf.Clamp01(sparkleVolumeTime + Time.deltaTime);
+        }
     }
 
     private void ResetSparkles() {

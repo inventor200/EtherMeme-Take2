@@ -28,34 +28,58 @@ using UnityEngine;
 
 public class CloudLayer : MonoBehaviour {
 
-	public EtherSampler sampler;
     public float sideLength;
     public AnimationCurve altitudeAlpha;
     private Vector2 realPosition = Vector2.zero;
     private SpriteRenderer rend;
+	private EtherSampler etherSampler;
+    private float[] hues;
+    private float hueCycle = 0;
 
     // Start is called before the first frame update
     void Awake() {
+        etherSampler = GameObject.FindGameObjectWithTag("EtherSampler").GetComponent<EtherSampler>();
         rend = GetComponent<SpriteRenderer>();
+        hues = new float[] {
+            EtherSampler.GetHueFromColor(etherSampler.playerHue),
+            EtherSampler.GetHueFromColor(etherSampler.targetHue),
+            EtherSampler.GetHueFromColor(etherSampler.predatorHue),
+            EtherSampler.GetHueFromColor(etherSampler.freighterHue)
+        };
     }
 
     // Update is called once per frame
     void Update() {
-        float scale = sampler.ascendedScale / sampler.altitudeScale;
+        float scale = etherSampler.ascendedScale / etherSampler.altitudeScale;
         transform.localScale = new Vector3(scale, scale, scale);
-        Vector2 normDirection = sampler.greaterTideDirection.normalized;
-        float magDirection = (sampler.greaterTideDirection.magnitude / 100f) + 10f;
-        Vector2 direction = normDirection * magDirection;
-        Vector2 playerPos = (Vector2)sampler.playerTransform.position;
-        realPosition += direction * Time.deltaTime;
-        float fullLength = sideLength * scale;
-        //float halfLength = fullLength / 2f;
-        Vector2 diff = (realPosition * scale) - playerPos;
-        float nextX = Mathf.Repeat(diff.x, fullLength);
-        float nextY = Mathf.Repeat(diff.y, fullLength);
-        transform.position = new Vector2(playerPos.x + nextX, playerPos.y + nextY);
+        Vector2 normDirection = etherSampler.greaterTideDirection.normalized;
+        float magDirection = (etherSampler.greaterTideDirection.magnitude / 100f) + 10f;
+        Vector2 direction = normDirection * magDirection * Time.deltaTime;
+        Vector2 playerPos = (Vector2)etherSampler.playerTransform.position;
+        realPosition = new Vector2(
+            Mathf.Repeat(realPosition.x + direction.x, 3600f),
+            Mathf.Repeat(realPosition.y + direction.y, 3600f)
+        );
+        //float fullLength = sideLength * scale;
+        Vector2 diff = realPosition - playerPos;
+        float nextX = Mathf.Repeat(diff.x, sideLength);
+        float nextY = Mathf.Repeat(diff.y, sideLength);
+        transform.position = new Vector2(playerPos.x + nextX, playerPos.y + nextY) * scale;
 
-        float chosenAlpha = altitudeAlpha.Evaluate(Mathf.Clamp01(sampler.altitude / 2f));
-        rend.color = new Color(1f, 1f, 1f, chosenAlpha);
+        // Make colors flash faster and slower, as though the Ether is breathing.
+        float acceleration = (Mathf.Sin(Time.time * 2f) * 2f) + 5f;
+        hueCycle = Mathf.Repeat(hueCycle + (acceleration * Time.deltaTime), 5f);
+        int chosenChannel = Mathf.Clamp(Mathf.FloorToInt(hueCycle), 0, 4);
+        Color chosenColor = Color.white;
+        if (chosenChannel < 4) {
+            if (etherSampler.channelsAscended[chosenChannel]) {
+                chosenColor = Color.HSVToRGB(hues[chosenChannel], 1f, 1f);
+            }
+        }
+
+        chosenColor = Color.Lerp(rend.color, chosenColor, 10 * Time.deltaTime);
+
+        float chosenAlpha = altitudeAlpha.Evaluate(Mathf.Clamp01(etherSampler.playerShip.currentAltitude / 2f));
+        rend.color = new Color(chosenColor.r, chosenColor.g, chosenColor.b, chosenAlpha);
     }
 }

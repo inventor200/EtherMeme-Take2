@@ -28,13 +28,15 @@ using UnityEngine;
 
 public class EtherSampler : MonoBehaviour {
 
+    private static float MAX_TIDE_FORCE = 10f;
+
     public Transform playerTransform;
 	public Transform tidePrefab;
     public Camera etherCam;
     [Space]
     public float sampleWidth = 10;
     public int startingTideCount = 100;
-    public float crowdDistance = 2f;
+    public float crowdDistance = 5f;
     public float maxPeerDistance = 4f;
     public int highHitsPerPass = 64;
     public int midHitsPerPass = 32;
@@ -66,16 +68,21 @@ public class EtherSampler : MonoBehaviour {
     private Queue<SonarPing> pingRequests;
     private bool pingRequiresSort = true;
     private float lastSparkleVolume = 0;
-    public float altitude { private set; get; }
+    //public float altitude { private set; get; }
     public Vector2 greaterTideDirection { private set; get; }
     private Vector2 greaterTideSeed;
-    private ShipInEther playerShip;
+    public ShipInEther playerShip { private set; get; }
+    public bool[] channelsAscended { private set; get; }
+
+    void Awake() {
+        channelsAscended = new bool[4];
+        playerShip = playerTransform.GetComponent<ShipInEther>();
+    }
 
     // Start is called before the first frame update
     void Start() {
-        playerShip = playerTransform.GetComponent<ShipInEther>();
         greaterTideSeed = Random.insideUnitCircle * 100;
-        altitude = 1;
+        //altitude = 1;
         trArray = new Transform[startingTideCount];
         riArray = new Rigidbody2D[startingTideCount];
         cmArray = new VisualTide[startingTideCount];
@@ -107,8 +114,6 @@ public class EtherSampler : MonoBehaviour {
 
     // Update is called once per frame
     void Update() {
-        //altitude = Mathf.Sin(Time.time / 6) + 1f;
-        altitude = playerShip.currentAltitude;
         pingRequiresSort = true;
         while (pingRequests.Count > 0) {
             PingForAngle(pingRequests.Dequeue());
@@ -122,27 +127,61 @@ public class EtherSampler : MonoBehaviour {
             tideVolume = Mathf.Clamp01((tideVolume * 4f) / playerDist);
             sparkleVolume = Mathf.Max(sparkleVolume, tideVolume);
         }
-        ambientSounds.altitudeMix = Mathf.Clamp(altitude, 0, 2);
+        ambientSounds.altitudeMix = Mathf.Clamp(playerShip.currentAltitude, 0, 2);
         lastSparkleVolume = Mathf.Lerp(lastSparkleVolume, sparkleVolume, 8 * Time.deltaTime);
         ambientSounds.sparkleVolume = lastSparkleVolume * 0.25f;
-        //Debug.Log(altitude);
+
+        // TODO: channelAscended has true bits according to what teams are in ascended layers
+        channelsAscended[(int)PingChannelID.Player_WasSeen / 2] = playerShip.isAscended;
     }
 
     void FixedUpdate() {
-        // Do boids
-        // We're avoiding operations that affect garbage collection as much as possible
-        float sqrCrowdDist = crowdDistance * crowdDistance;
-        float sqrMaxPeerDist = maxPeerDistance * maxPeerDistance;
-        float maxForce = 10f;
-        float sampleRadius = sampleWidth / 2f;
-
-        float greaterTideAngle = Mathf.PerlinNoise(greaterTideSeed.x + (Time.time / 32f), greaterTideSeed.y) * Mathf.PI * 2;
-        float greaterTideHeave = Mathf.PerlinNoise(greaterTideSeed.y + Time.time, greaterTideSeed.x) * 200f;
+        float greaterTideAngle = Mathf.PerlinNoise(greaterTideSeed.x + (Time.fixedTime / 32f), greaterTideSeed.y) * Mathf.PI * 2;
+        float greaterTideHeave = Mathf.PerlinNoise(greaterTideSeed.y + Time.fixedTime, greaterTideSeed.x) * 200f;
         float greaterTideX = Mathf.Cos(greaterTideAngle);
         float greaterTideY = Mathf.Sin(greaterTideAngle);
         greaterTideDirection = new Vector2(greaterTideX, greaterTideY) * greaterTideHeave;
 
-        //Debug.Log("" + greaterTideX + ", " + greaterTideY + " | " + greaterTideHeave);
+        // Do boids
+        // We're avoiding operations that affect garbage collection as much as possible
+        if (playerShip.currentAltitude >= 1.9f) {
+            DoAscendedBoids();
+        }
+        else if (playerShip.isBuried) {
+            DoBuriedBoids();
+        }
+        else {
+            DoStandardBoids(greaterTideX, greaterTideY, greaterTideHeave);
+        }
+    }
+
+    private void DoAscendedBoids() { // Tides follow player with minimal calculation
+        float wrapRadius = (sampleWidth / 2f) * 1.5f;
+        float sqrCrowdDist = wrapRadius * wrapRadius;
+
+        for (int i = 0; i < startingTideCount; i++) {
+            Vector2 posA = trArray[i].position;
+            float playerDiffX = playerTransform.position.x - posA.x;
+            float playerDiffY = playerTransform.position.y - posA.y;
+            float playerDist = (playerDiffX * playerDiffX) + (playerDiffY * playerDiffY);
+            // Check to avoid sqrt
+            if (playerDist >= sqrCrowdDist) {
+                float cachedPlayerDist = Mathf.Sqrt(playerDist);
+                // Wrap positions
+                if (cachedPlayerDist > wrapRadius && cmArray[i].canTeleport) {
+                    trArray[i].position = new Vector3(
+                        playerTransform.position.x + playerDiffX,
+                        playerTransform.position.y + playerDiffY,
+                        0);
+                    cmArray[i].FinishTeleport();
+                }
+            }
+        }
+    }
+
+    private void DoStandardBoids(float greaterTideX, float greaterTideY, float greaterTideHeave) { // Tides scatter around player
+        float sqrCrowdDist = crowdDistance * crowdDistance;
+        float sqrMaxPeerDist = maxPeerDistance * maxPeerDistance;
 
         for (int i = 0; i < startingTideCount; i++) {
             Vector2 nextForce = Random.insideUnitCircle * 100f;
@@ -162,8 +201,8 @@ public class EtherSampler : MonoBehaviour {
                 float cachedForce = 50f / (dist * dist);
                 float repelX = (-diffX / cachedDist) * cachedForce;
                 float repelY = (-diffY / cachedDist) * cachedForce;
-                peerPressureX = Mathf.Clamp(peerPressureX + (repelX / startingTideCount), -maxForce, maxForce);
-                peerPressureY = Mathf.Clamp(peerPressureY + (repelY / startingTideCount), -maxForce, maxForce);
+                peerPressureX = Mathf.Clamp(peerPressureX + (repelX / startingTideCount), -MAX_TIDE_FORCE, MAX_TIDE_FORCE);
+                peerPressureY = Mathf.Clamp(peerPressureY + (repelY / startingTideCount), -MAX_TIDE_FORCE, MAX_TIDE_FORCE);
             }
 
             float playerPressureX = 0;
@@ -175,12 +214,10 @@ public class EtherSampler : MonoBehaviour {
             if (playerDist > sqrCrowdDist) {
                 float cachedPlayerDist = Mathf.Sqrt(playerDist);
                 float playerForce = playerDist * 0.25f;
-                playerPressureX = Mathf.Clamp((playerDiffX / cachedPlayerDist) * playerForce, -maxForce, maxForce);
-                playerPressureY = Mathf.Clamp((playerDiffY / cachedPlayerDist) * playerForce, -maxForce, maxForce);
+                playerPressureX = Mathf.Clamp((playerDiffX / cachedPlayerDist) * playerForce, -MAX_TIDE_FORCE, MAX_TIDE_FORCE);
+                playerPressureY = Mathf.Clamp((playerDiffY / cachedPlayerDist) * playerForce, -MAX_TIDE_FORCE, MAX_TIDE_FORCE);
                 // Wrap positions
-                if (cachedPlayerDist > sampleRadius * 1.5f && cmArray[i].canTeleport) {
-                    //playerPressureX *= -1;
-                    //playerPressureY *= -1;
+                if (cachedPlayerDist > (sampleWidth / 2f) * 1.5f && cmArray[i].canTeleport) {
                     trArray[i].position = new Vector3(
                         playerTransform.position.x + playerDiffX,
                         playerTransform.position.y + playerDiffY,
@@ -195,6 +232,59 @@ public class EtherSampler : MonoBehaviour {
                 + (greaterTideX * greaterTideHeave),
                 ((nextForce.y + peerPressureY + playerPressureY) * postMult)
                 + (greaterTideY * greaterTideHeave)
+            ));
+        }
+    }
+
+    private void DoBuriedBoids() { // Tides crowd around player
+        float sqrMaxPeerDist = maxPeerDistance * maxPeerDistance;
+
+        for (int i = 0; i < startingTideCount; i++) {
+            Vector2 nextForce = Random.insideUnitCircle * 100f;
+            Vector2 posA = trArray[i].position;
+            float peerPressureX = 0;
+            float peerPressureY = 0;
+            for (int j = 0; j < startingTideCount; j++) {
+                if (i == j) continue;
+                Vector2 posB = trArray[j].position;
+
+                float diffX = posB.x - posA.x;
+                float diffY = posB.y - posA.y;
+                float dist = (diffX * diffX) + (diffY * diffY);
+                // Do a check before performing a sqrt operation
+                if (dist > sqrMaxPeerDist) continue;
+                float cachedDist = Mathf.Sqrt(dist);
+                float cachedForce = 50f / (dist * dist);
+                float repelX = (-diffX / cachedDist) * cachedForce;
+                float repelY = (-diffY / cachedDist) * cachedForce;
+                peerPressureX = Mathf.Clamp(peerPressureX + (repelX / startingTideCount), -MAX_TIDE_FORCE, MAX_TIDE_FORCE);
+                peerPressureY = Mathf.Clamp(peerPressureY + (repelY / startingTideCount), -MAX_TIDE_FORCE, MAX_TIDE_FORCE);
+            }
+
+            float playerPressureX = 0;
+            float playerPressureY = 0;
+            float playerDiffX = playerTransform.position.x - posA.x;
+            float playerDiffY = playerTransform.position.y - posA.y;
+            //float playerDist = (playerDiffX * playerDiffX) + (playerDiffY * playerDiffY);
+            // Tides crowd the player when buried
+            //float cachedPlayerDist = Mathf.Sqrt(playerDist);
+            //float playerForce = playerDist * 0.25f;
+            float crowdForce = 1.5f;
+            playerPressureX = Mathf.Clamp(playerDiffX * crowdForce, -MAX_TIDE_FORCE, MAX_TIDE_FORCE);
+            playerPressureY = Mathf.Clamp(playerDiffY * crowdForce, -MAX_TIDE_FORCE, MAX_TIDE_FORCE);
+            // The player does not move, so wrapping is not necessary
+            /*if (cachedPlayerDist > (sampleWidth / 2f) * 1.5f && cmArray[i].canTeleport) {
+                trArray[i].position = new Vector3(
+                    playerTransform.position.x + playerDiffX,
+                    playerTransform.position.y + playerDiffY,
+                    0);
+                cmArray[i].FinishTeleport();
+            }*/
+            float postMult = riArray[i].mass * 7f * Time.fixedDeltaTime;
+            
+            riArray[i].AddForce(new Vector2(
+                ((nextForce.x + peerPressureX + playerPressureX) * postMult),
+                ((nextForce.y + peerPressureY + playerPressureY) * postMult)
             ));
         }
     }

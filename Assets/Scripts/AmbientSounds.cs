@@ -61,7 +61,7 @@ public class AmbientSounds : MonoBehaviour {
 
         layer1Audio.volume = topMult;
         layer2Audio.volume = topMult;
-        layer2Audio.pitch = 1f + (velocityMix * 0.1f);
+        layer2Audio.pitch = 1f + (velocityMix * 0.01f);
         layer3Audio.volume = midMult;
         layer4Audio.volume = lowerMult;
         layer4Audio.pitch = 0.125f - (0.025f * midMult) + (velocityMix * 0.1f);
