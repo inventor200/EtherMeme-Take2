@@ -30,8 +30,7 @@ public class CloudLayer : MonoBehaviour {
 
 	public EtherSampler sampler;
     public float sideLength;
-    public float ascensionScale = 10;
-    public float standardAlpha = 0.1f;
+    public AnimationCurve altitudeAlpha;
     private Vector2 realPosition = Vector2.zero;
     private SpriteRenderer rend;
 
@@ -42,9 +41,11 @@ public class CloudLayer : MonoBehaviour {
 
     // Update is called once per frame
     void Update() {
-        float scale = 1f + (Mathf.Clamp01(2f - sampler.altitude) * (ascensionScale - 1f));
+        float scale = sampler.ascendedScale / sampler.altitudeScale;
         transform.localScale = new Vector3(scale, scale, scale);
-        Vector2 direction = sampler.greaterTideDirection / 100f;
+        Vector2 normDirection = sampler.greaterTideDirection.normalized;
+        float magDirection = (sampler.greaterTideDirection.magnitude / 100f) + 10f;
+        Vector2 direction = normDirection * magDirection;
         Vector2 playerPos = (Vector2)sampler.playerTransform.position;
         realPosition += direction * Time.deltaTime;
         float fullLength = sideLength * scale;
@@ -54,7 +55,7 @@ public class CloudLayer : MonoBehaviour {
         float nextY = Mathf.Repeat(diff.y, fullLength);
         transform.position = new Vector2(playerPos.x + nextX, playerPos.y + nextY);
 
-        float chosenAlpha = Mathf.Clamp01(sampler.altitude) * standardAlpha;
+        float chosenAlpha = altitudeAlpha.Evaluate(Mathf.Clamp01(sampler.altitude / 2f));
         rend.color = new Color(1f, 1f, 1f, chosenAlpha);
     }
 }

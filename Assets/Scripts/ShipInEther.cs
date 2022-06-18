@@ -24,6 +24,7 @@ SOFTWARE.
 
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine.UI;
 using UnityEngine;
 
 public class ShipInEther : MonoBehaviour {
@@ -37,6 +38,8 @@ public class ShipInEther : MonoBehaviour {
     public static KeyCode KEY_ASCEND = KeyCode.R;
     public static KeyCode KEY_DESCEND = KeyCode.F;
 
+    public static float STANDARD_DEPTH_TOLERANCE = 0.5f;
+
     public static float[][] SPEED_MODES = new float [][] {
         new float[] {100f, 1.2f},
         new float[] {200f, 2.5f}
@@ -47,6 +50,9 @@ public class ShipInEther : MonoBehaviour {
     [Space]
     public AmbientSounds ambientSounds;
     public RectTransform mapGrid;
+    public Image standardGrid;
+    public Image ascendedGrid;
+    public float gridAlpha = 0.1f;
     public TMPro.TextMeshProUGUI positionText;
     public float currentAltitude { private set; get; } = 2;
     private int goalAltitude = 1;
@@ -63,9 +69,20 @@ public class ShipInEther : MonoBehaviour {
     private float expectedAcceleration = 0;
     private bool wasInteractingWithTides = false;
     private bool interactingWithTides = true;
-    private float altitudeSpeedScale {
+    private bool isAscended {
         get {
-            return 1f + (Mathf.Clamp01(currentAltitude - 1f) * 9f);
+            return currentAltitude > 1f + STANDARD_DEPTH_TOLERANCE;
+        }
+    }
+    private bool isBuried {
+        get {
+            return currentAltitude < (1f - STANDARD_DEPTH_TOLERANCE);
+        }
+    }
+    private bool isAtStandardDepth {
+        get {
+            return (currentAltitude >= (1f - STANDARD_DEPTH_TOLERANCE))
+                && (currentAltitude <= 1f + STANDARD_DEPTH_TOLERANCE);
         }
     }
 
@@ -85,7 +102,11 @@ public class ShipInEther : MonoBehaviour {
     }
 
     // Update is called once per frame
-    void Update() { // TODO: Engine is silent when in stealth
+    // TODO: Engine is silent when in stealth
+    // TODO: Tides are visible when buried, but vignette is stronger
+    // TODO: Turn off tide rendering when ascended; it's visible through clouds now
+    // TODO: Refactor this class, and move as much rendering as possible to EtherSampler
+    void Update() {
         pingMagnitude = Mathf.Clamp01(pingMagnitude - (Time.deltaTime / 2f));
         Color haloColor = Color.HSVToRGB(pingHue, 1f, pingMagnitude);
         string stealthInd = currentSpeed == ShipSpeed.Stealth ? "\n[Stealth]" : "";
@@ -110,7 +131,7 @@ public class ShipInEther : MonoBehaviour {
         else {
             nextSpeed = ShipSpeed.Halted;
 
-            if (currentAltitude > 0.5f) { // No moving when buried
+            if (!isBuried) {
                 if (Input.GetKey(KEY_NORTH)) {
                     nextSpeed = ShipSpeed.Cruise;
                     nextMoveDir += Vector2.up;
@@ -159,7 +180,7 @@ public class ShipInEther : MonoBehaviour {
             float currentAngle = arrow.localRotation.eulerAngles.z;
 
             arrow.localRotation = Quaternion.Euler(0, 0, Mathf.MoveTowardsAngle(currentAngle, nextAngle, 360f * Time.deltaTime));
-            speedScale = ri.velocity.magnitude / (SPEED_MODES[1][1] * altitudeSpeedScale);
+            speedScale = ri.velocity.magnitude / (SPEED_MODES[1][1] * etherSampler.altitudeScale);
 
             expectedAcceleration = Mathf.MoveTowards(expectedAcceleration, 1f, Time.deltaTime);
             expectedSpeed = SPEED_MODES[(int)currentSpeed][1];
@@ -173,11 +194,17 @@ public class ShipInEther : MonoBehaviour {
         if (currentAltitude > 1.5f) {
             expectedPosition = (Vector2)transform.position; // Calibrate when ascended
         }
-        float expectedX = Mathf.Repeat(expectedPosition.x + 5f, 10f);
-        float expectedY = Mathf.Repeat(expectedPosition.y + 5f, 10f);
-        expectedX = (expectedX - 5f) * -51.2f;
-        expectedY = (expectedY - 5f) * -51.2f;
-        mapGrid.anchoredPosition = new Vector2(expectedX, expectedY);
+        float totalScale = etherSampler.ascendedScale * etherSampler.cameraScale;
+        float halfCam = etherSampler.cameraScale / 2f;
+        float expectedX = Mathf.Repeat(expectedPosition.x + halfCam, totalScale);
+        float expectedY = Mathf.Repeat(expectedPosition.y + halfCam, totalScale);
+        expectedX = (expectedX - halfCam) * -51.2f;
+        expectedY = (expectedY - halfCam) * -51.2f;
+        mapGrid.anchoredPosition = (new Vector2(expectedX, expectedY)) / etherSampler.altitudeScale;
+        mapGrid.localScale = (new Vector3(1, 1, 1)) / etherSampler.altitudeScale;
+        float ascendedFactor = Mathf.Clamp01(currentAltitude - 1f);
+        standardGrid.color = new Color(1f, 1f, 1f, gridAlpha * (1f - ascendedFactor));
+        ascendedGrid.color = new Color(1f, 1f, 1f, gridAlpha * ascendedFactor);
 
         float nextSize = currentSpeed == ShipSpeed.Stealth ? 0f : 1f;
         arrowSize = Mathf.Lerp(arrowSize, nextSize, 5 * Time.deltaTime);
@@ -187,7 +214,7 @@ public class ShipInEther : MonoBehaviour {
 
         ambientSounds.velocityMix = speedScale;
 
-        interactingWithTides = Mathf.Abs(1f - currentAltitude) < 0.5f;
+        interactingWithTides = isAtStandardDepth;
     }
 
     void FixedUpdate() {
@@ -207,7 +234,7 @@ public class ShipInEther : MonoBehaviour {
             ri.drag = interactingWithTides ? 10f : nonStandardDrag;
             if (currentSpeed != ShipSpeed.Halted) {
                 float dragAdjustment = ri.drag * 0.75f;
-                float speed = SPEED_MODES[(int)currentSpeed][0] * altitudeSpeedScale;
+                float speed = SPEED_MODES[(int)currentSpeed][0] * etherSampler.altitudeScale;
                 ri.AddForce(moveDir * ri.mass * speed * dragAdjustment * Time.deltaTime);
             }
         }

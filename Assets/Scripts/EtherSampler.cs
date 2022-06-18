@@ -30,6 +30,8 @@ public class EtherSampler : MonoBehaviour {
 
     public Transform playerTransform;
 	public Transform tidePrefab;
+    public Camera etherCam;
+    [Space]
     public float sampleWidth = 10;
     public int startingTideCount = 100;
     public float crowdDistance = 2f;
@@ -42,6 +44,17 @@ public class EtherSampler : MonoBehaviour {
     public Color targetHue;
     public Color predatorHue;
     public Color freighterHue;
+    public float ascendedScale = 10f;
+    public float cameraScale {
+        get {
+            return etherCam.orthographicSize * 2f;
+        }
+    }
+    public float altitudeScale {
+        get {
+            return 1f + (Mathf.Clamp01(playerShip.currentAltitude - 1f) * (ascendedScale - 1f));
+        }
+    }
     [Space]
     public AmbientSounds ambientSounds;
     
