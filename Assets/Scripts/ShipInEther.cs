@@ -57,6 +57,8 @@ public class ShipInEther : MonoBehaviour {
     public TopDownGrid ascendedGrid;
     public AnimationCurve vignetteStrengths;
     public TMPro.TextMeshProUGUI positionText;
+    public CoordClock xClock;
+    public CoordClock yClock;
     public float currentAltitude { private set; get; } = 2;
     private int goalAltitude = 1;
 
@@ -109,13 +111,11 @@ public class ShipInEther : MonoBehaviour {
 
     // Update is called once per frame
     // TODO: Engine is silent when in stealth
-    // TODO: Tides are visible when buried, but vignette is stronger
     // TODO: Refactor this class
     void Update() {
         pingMagnitude = Mathf.Clamp01(pingMagnitude - (Time.deltaTime / 2f));
         Color haloColor = Color.HSVToRGB(pingHue, 1f, pingMagnitude);
-        string stealthInd = currentSpeed == ShipSpeed.Stealth ? "\n[Stealth]" : "";
-        positionText.text = string.Format("{0,4}, {1,4}", Mathf.RoundToInt(transform.position.x), Mathf.RoundToInt(transform.position.y)) + stealthInd;
+        
         if (Input.GetKeyDown(KeyCode.Space)) {
             SendPing(PingChannelID.Player_WasSeen);
         }
@@ -200,6 +200,15 @@ public class ShipInEther : MonoBehaviour {
             expectedPosition = (Vector2)transform.position; // Recalibrate when ascended
         }
 
+        // Ensure wrapping
+        expectedPosition = new Vector2(
+            Mathf.Repeat(expectedPosition.x, 360f),
+            Mathf.Repeat(expectedPosition.y, 360f)
+        );
+
+        string stealthInd = currentSpeed == ShipSpeed.Stealth ? "\n[Stealth]" : "";
+        positionText.text = string.Format("{0,4}, {1,4}", Mathf.RoundToInt(transform.position.x), Mathf.RoundToInt(transform.position.y)) + stealthInd;
+
         // Adjust visual grid
         float totalAltitudeScale = rootScaleCurve.Evaluate(Mathf.Clamp01(currentAltitude / 2f));
         rootGrid.localScale = new Vector3(totalAltitudeScale, totalAltitudeScale, totalAltitudeScale);
@@ -221,6 +230,9 @@ public class ShipInEther : MonoBehaviour {
 
         // Control vignette intensity with altitude
         vignette.intensity.value = Mathf.Clamp01(vignetteStrengths.Evaluate(currentAltitude / 2f));
+
+        xClock.value = expectedPosition.x;
+        yClock.value = expectedPosition.y;
     }
 
     void FixedUpdate() {
@@ -244,6 +256,12 @@ public class ShipInEther : MonoBehaviour {
                 ri.AddForce(moveDir * ri.mass * speed * dragAdjustment * Time.deltaTime);
             }
         }
+
+        // Wrap player position
+        ri.position = new Vector2(
+            Mathf.Repeat(ri.position.x, 360f),
+            Mathf.Repeat(ri.position.y, 360f)
+        );
     }
 
     public void SendPing(PingChannelID id) {

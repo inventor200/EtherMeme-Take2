@@ -28,8 +28,6 @@ using UnityEngine;
 
 public class EtherSampler : MonoBehaviour {
 
-    private static float MAX_TIDE_FORCE = 10f;
-
     public Transform playerTransform;
 	public Transform tidePrefab;
     public Camera etherCam;
@@ -60,6 +58,7 @@ public class EtherSampler : MonoBehaviour {
     [Space]
     public AmbientSounds ambientSounds;
     
+    private TideEngine tideEngine;
     private Transform[] trArray;
     private Rigidbody2D[] riArray;
     private VisualTide[] cmArray;
@@ -110,6 +109,7 @@ public class EtherSampler : MonoBehaviour {
                 srArray[d,i] = new SonarSortable(i, 0, 0);
             }
         }
+        tideEngine = new TideEngine(playerTransform.GetComponent<Rigidbody2D>(), this, trArray, riArray, cmArray);
     }
 
     // Update is called once per frame
@@ -144,148 +144,45 @@ public class EtherSampler : MonoBehaviour {
 
         // Do boids
         // We're avoiding operations that affect garbage collection as much as possible
+        int tideMode;
         if (playerShip.currentAltitude >= 1.9f) {
-            DoAscendedBoids();
+            tideMode = 2;
         }
         else if (playerShip.isBuried) {
-            DoBuriedBoids();
+            tideMode = 0;
         }
         else {
-            DoStandardBoids(greaterTideX, greaterTideY, greaterTideHeave);
+            tideMode = 1;
         }
-    }
 
-    private void DoAscendedBoids() { // Tides follow player with minimal calculation
-        float wrapRadius = (sampleWidth / 2f) * 1.5f;
-        float sqrCrowdDist = wrapRadius * wrapRadius;
-
+        tideEngine.Setup(tideMode != 1);
         for (int i = 0; i < startingTideCount; i++) {
-            Vector2 posA = trArray[i].position;
-            float playerDiffX = playerTransform.position.x - posA.x;
-            float playerDiffY = playerTransform.position.y - posA.y;
-            float playerDist = (playerDiffX * playerDiffX) + (playerDiffY * playerDiffY);
-            // Check to avoid sqrt
-            if (playerDist >= sqrCrowdDist) {
-                float cachedPlayerDist = Mathf.Sqrt(playerDist);
-                // Wrap positions
-                if (cachedPlayerDist > wrapRadius && cmArray[i].canTeleport) {
-                    trArray[i].position = new Vector3(
-                        playerTransform.position.x + playerDiffX,
-                        playerTransform.position.y + playerDiffY,
-                        0);
-                    cmArray[i].FinishTeleport();
-                }
+            tideEngine.StartIndex(i);
+            switch (tideMode) {
+                case 0:
+                case 1:
+                    tideEngine.CacheNextNoiseForce();
+                    tideEngine.CalculatePeerPressure();
+                    break;
             }
-        }
-    }
-
-    private void DoStandardBoids(float greaterTideX, float greaterTideY, float greaterTideHeave) { // Tides scatter around player
-        float sqrCrowdDist = crowdDistance * crowdDistance;
-        float sqrMaxPeerDist = maxPeerDistance * maxPeerDistance;
-
-        for (int i = 0; i < startingTideCount; i++) {
-            Vector2 nextForce = Random.insideUnitCircle * 100f;
-            Vector2 posA = trArray[i].position;
-            float peerPressureX = 0;
-            float peerPressureY = 0;
-            for (int j = 0; j < startingTideCount; j++) {
-                if (i == j) continue;
-                Vector2 posB = trArray[j].position;
-
-                float diffX = posB.x - posA.x;
-                float diffY = posB.y - posA.y;
-                float dist = (diffX * diffX) + (diffY * diffY);
-                // Do a check before performing a sqrt operation
-                if (dist > sqrMaxPeerDist) continue;
-                float cachedDist = Mathf.Sqrt(dist);
-                float cachedForce = 50f / (dist * dist);
-                float repelX = (-diffX / cachedDist) * cachedForce;
-                float repelY = (-diffY / cachedDist) * cachedForce;
-                peerPressureX = Mathf.Clamp(peerPressureX + (repelX / startingTideCount), -MAX_TIDE_FORCE, MAX_TIDE_FORCE);
-                peerPressureY = Mathf.Clamp(peerPressureY + (repelY / startingTideCount), -MAX_TIDE_FORCE, MAX_TIDE_FORCE);
+            tideEngine.StartPlayerPressure();
+            switch (tideMode) {
+                case 0:
+                    tideEngine.CalculatePlayerCrowding();
+                    break;
+                case 1:
+                    tideEngine.CalculatePlayerPressure();
+                    break;
             }
-
-            float playerPressureX = 0;
-            float playerPressureY = 0;
-            float playerDiffX = playerTransform.position.x - posA.x;
-            float playerDiffY = playerTransform.position.y - posA.y;
-            float playerDist = (playerDiffX * playerDiffX) + (playerDiffY * playerDiffY);
-            // Pull tides in when they're too far away
-            if (playerDist > sqrCrowdDist) {
-                float cachedPlayerDist = Mathf.Sqrt(playerDist);
-                float playerForce = playerDist * 0.25f;
-                playerPressureX = Mathf.Clamp((playerDiffX / cachedPlayerDist) * playerForce, -MAX_TIDE_FORCE, MAX_TIDE_FORCE);
-                playerPressureY = Mathf.Clamp((playerDiffY / cachedPlayerDist) * playerForce, -MAX_TIDE_FORCE, MAX_TIDE_FORCE);
-                // Wrap positions
-                if (cachedPlayerDist > (sampleWidth / 2f) * 1.5f && cmArray[i].canTeleport) {
-                    trArray[i].position = new Vector3(
-                        playerTransform.position.x + playerDiffX,
-                        playerTransform.position.y + playerDiffY,
-                        0);
-                    cmArray[i].FinishTeleport();
-                }
+            tideEngine.DoWrapping();
+            switch (tideMode) {
+                case 1:
+                    tideEngine.ApplyForces(greaterTideX, greaterTideY, greaterTideHeave);
+                    break;
+                default:
+                    tideEngine.ApplyForces(0, 0, 0);
+                    break;
             }
-            float postMult = riArray[i].mass * 7f * Time.fixedDeltaTime;
-            
-            riArray[i].AddForce(new Vector2(
-                ((nextForce.x + peerPressureX + playerPressureX) * postMult)
-                + (greaterTideX * greaterTideHeave),
-                ((nextForce.y + peerPressureY + playerPressureY) * postMult)
-                + (greaterTideY * greaterTideHeave)
-            ));
-        }
-    }
-
-    private void DoBuriedBoids() { // Tides crowd around player
-        float sqrMaxPeerDist = maxPeerDistance * maxPeerDistance;
-
-        for (int i = 0; i < startingTideCount; i++) {
-            Vector2 nextForce = Random.insideUnitCircle * 100f;
-            Vector2 posA = trArray[i].position;
-            float peerPressureX = 0;
-            float peerPressureY = 0;
-            for (int j = 0; j < startingTideCount; j++) {
-                if (i == j) continue;
-                Vector2 posB = trArray[j].position;
-
-                float diffX = posB.x - posA.x;
-                float diffY = posB.y - posA.y;
-                float dist = (diffX * diffX) + (diffY * diffY);
-                // Do a check before performing a sqrt operation
-                if (dist > sqrMaxPeerDist) continue;
-                float cachedDist = Mathf.Sqrt(dist);
-                float cachedForce = 50f / (dist * dist);
-                float repelX = (-diffX / cachedDist) * cachedForce;
-                float repelY = (-diffY / cachedDist) * cachedForce;
-                peerPressureX = Mathf.Clamp(peerPressureX + (repelX / startingTideCount), -MAX_TIDE_FORCE, MAX_TIDE_FORCE);
-                peerPressureY = Mathf.Clamp(peerPressureY + (repelY / startingTideCount), -MAX_TIDE_FORCE, MAX_TIDE_FORCE);
-            }
-
-            float playerPressureX = 0;
-            float playerPressureY = 0;
-            float playerDiffX = playerTransform.position.x - posA.x;
-            float playerDiffY = playerTransform.position.y - posA.y;
-            //float playerDist = (playerDiffX * playerDiffX) + (playerDiffY * playerDiffY);
-            // Tides crowd the player when buried
-            //float cachedPlayerDist = Mathf.Sqrt(playerDist);
-            //float playerForce = playerDist * 0.25f;
-            float crowdForce = 1.5f;
-            playerPressureX = Mathf.Clamp(playerDiffX * crowdForce, -MAX_TIDE_FORCE, MAX_TIDE_FORCE);
-            playerPressureY = Mathf.Clamp(playerDiffY * crowdForce, -MAX_TIDE_FORCE, MAX_TIDE_FORCE);
-            // The player does not move, so wrapping is not necessary
-            /*if (cachedPlayerDist > (sampleWidth / 2f) * 1.5f && cmArray[i].canTeleport) {
-                trArray[i].position = new Vector3(
-                    playerTransform.position.x + playerDiffX,
-                    playerTransform.position.y + playerDiffY,
-                    0);
-                cmArray[i].FinishTeleport();
-            }*/
-            float postMult = riArray[i].mass * 7f * Time.fixedDeltaTime;
-            
-            riArray[i].AddForce(new Vector2(
-                ((nextForce.x + peerPressureX + playerPressureX) * postMult),
-                ((nextForce.y + peerPressureY + playerPressureY) * postMult)
-            ));
         }
     }
 
