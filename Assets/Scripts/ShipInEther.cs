@@ -195,7 +195,12 @@ public class ShipInEther : MonoBehaviour {
             }
         }
 
+        bool didHaveSignal = hasSignal;
         currentAltitude = Mathf.MoveTowards(currentAltitude, goalAltitude, Time.deltaTime / DEPTH_CHANGE_TIME);
+        bool nowHasSignal = hasSignal;
+        if (didHaveSignal != nowHasSignal) {
+            //TODO: Alerts about signal strength change
+        }
 
         currentSpeed = nextSpeed;
         moveDir = nextMoveDir.normalized;

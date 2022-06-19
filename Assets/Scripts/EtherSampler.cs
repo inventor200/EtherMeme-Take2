@@ -132,7 +132,7 @@ public class EtherSampler : MonoBehaviour {
         ambientSounds.sparkleVolume = lastSparkleVolume * 0.25f;
 
         // TODO: channelAscended has true bits according to what teams are in ascended layers
-        channelsAscended[(int)PingChannelID.Player_WasSeen / 2] = playerShip.isAscended;
+        channelsAscended[(int)PingChannelID.Player_WasSeen / 2] = playerShip.hasSignal;
     }
 
     void FixedUpdate() {
