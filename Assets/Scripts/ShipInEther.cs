@@ -39,12 +39,21 @@ public class ShipInEther : MonoBehaviour {
     public static KeyCode KEY_ASCEND = KeyCode.R;
     public static KeyCode KEY_DESCEND = KeyCode.F;
 
-    public static float STANDARD_DEPTH_TOLERANCE = 0.5f;
+    private static float STANDARD_DEPTH_TOLERANCE = 0.1f;
+    private static float ENTRY_ALTITUDE = 2.1f;
 
-    public static float[][] SPEED_MODES = new float [][] {
-        new float[] {100f, 1.2f},
-        new float[] {200f, 2.5f}
+    private static float DEPTH_CHANGE_TIME = 10f;
+
+    // Force, avg m/s, avg error per meter
+    private static float[][] SPEED_MODES = new float [][] {
+        new float[] {100f, 1.2f, 0.02f},
+        new float[] {200f, 2.5f, 0.03f}
     };
+
+    private static float ERROR_PER_SEC_IDLE_STANDARD = 0.036f;
+    private static float ERROR_PER_SEC_STEALTH_STANDARD = 0.738f;
+    private static float ERROR_PER_SEC_BURIED = 0.000042f;
+
 	public SpriteRenderer halo;
     public Transform arrow;
     public PostProcessVolume postProcessor;
@@ -59,7 +68,7 @@ public class ShipInEther : MonoBehaviour {
     public TMPro.TextMeshProUGUI positionText;
     public CoordClock xClock;
     public CoordClock yClock;
-    public float currentAltitude { private set; get; } = 2;
+    public float currentAltitude { private set; get; } = 3;
     private int goalAltitude = 1;
 
     private EtherSampler etherSampler;
@@ -73,16 +82,27 @@ public class ShipInEther : MonoBehaviour {
     private float arrowSize = 1f;
     public Vector2 expectedPosition { private set; get; }
     private float expectedAcceleration = 0;
+    private float expectedError = 0;
     private bool wasInteractingWithTides = false;
     private bool interactingWithTides = true;
+    public bool isEntering {
+        get {
+            return currentAltitude >= ENTRY_ALTITUDE;
+        }
+    }
     public bool isAscended {
         get {
-            return currentAltitude > 1f + STANDARD_DEPTH_TOLERANCE;
+            return currentAltitude > 1f + STANDARD_DEPTH_TOLERANCE && currentAltitude < ENTRY_ALTITUDE;
+        }
+    }
+    public bool hasSignal {
+        get {
+            return currentAltitude > 2f - STANDARD_DEPTH_TOLERANCE;
         }
     }
     public bool isBuried {
         get {
-            return currentAltitude < (1f - STANDARD_DEPTH_TOLERANCE);
+            return currentAltitude < 1f - STANDARD_DEPTH_TOLERANCE;
         }
     }
     public bool isAtStandardDepth {
@@ -91,6 +111,8 @@ public class ShipInEther : MonoBehaviour {
                 && (currentAltitude <= 1f + STANDARD_DEPTH_TOLERANCE);
         }
     }
+
+    private bool hasLanded = false;
 
     void Awake() {
         etherSampler = GameObject.FindGameObjectWithTag("EtherSampler").GetComponent<EtherSampler>();
@@ -106,17 +128,16 @@ public class ShipInEther : MonoBehaviour {
 
     // Start is called before the first frame update
     void Start() {
-        //
+        expectedPosition = (Vector2)transform.position;
     }
 
     // Update is called once per frame
-    // TODO: Engine is silent when in stealth
     // TODO: Refactor this class
     void Update() {
         pingMagnitude = Mathf.Clamp01(pingMagnitude - (Time.deltaTime / 2f));
         Color haloColor = Color.HSVToRGB(pingHue, 1f, pingMagnitude);
         
-        if (Input.GetKeyDown(KeyCode.Space)) {
+        if (Input.GetKeyDown(KeyCode.Space) && hasLanded) {
             SendPing(PingChannelID.Player_WasSeen);
         }
 
@@ -126,7 +147,7 @@ public class ShipInEther : MonoBehaviour {
         if (currentSpeed == ShipSpeed.Stealth) {
             nextSpeed = ShipSpeed.Stealth;
 
-            if (Input.GetKeyDown(KEY_STEALTH)) {
+            if (Input.GetKeyDown(KEY_STEALTH) && hasLanded) {
                 nextSpeed = ShipSpeed.Halted;
             }
 
@@ -136,46 +157,50 @@ public class ShipInEther : MonoBehaviour {
         else {
             nextSpeed = ShipSpeed.Halted;
 
-            if (!isBuried) {
-                if (Input.GetKey(KEY_NORTH)) {
-                    nextSpeed = ShipSpeed.Cruise;
-                    nextMoveDir += Vector2.up;
-                }
-                if (Input.GetKey(KEY_WEST)) {
-                    nextSpeed = ShipSpeed.Cruise;
-                    nextMoveDir += Vector2.left;
-                }
-                if (Input.GetKey(KEY_SOUTH)) {
-                    nextSpeed = ShipSpeed.Cruise;
-                    nextMoveDir += Vector2.down;
-                }
-                if (Input.GetKey(KEY_EAST)) {
-                    nextSpeed = ShipSpeed.Cruise;
-                    nextMoveDir += Vector2.right;
+            if (hasLanded) {
+                if (!isBuried && !isEntering) {
+                    if (Input.GetKey(KEY_NORTH)) {
+                        nextSpeed = ShipSpeed.Cruise;
+                        nextMoveDir += Vector2.up;
+                    }
+                    if (Input.GetKey(KEY_WEST)) {
+                        nextSpeed = ShipSpeed.Cruise;
+                        nextMoveDir += Vector2.left;
+                    }
+                    if (Input.GetKey(KEY_SOUTH)) {
+                        nextSpeed = ShipSpeed.Cruise;
+                        nextMoveDir += Vector2.down;
+                    }
+                    if (Input.GetKey(KEY_EAST)) {
+                        nextSpeed = ShipSpeed.Cruise;
+                        nextMoveDir += Vector2.right;
+                    }
+
+                    if (nextSpeed == ShipSpeed.Cruise && Input.GetKey(KEY_AHEAD_FULL_MOD)) {
+                        nextSpeed = ShipSpeed.AheadFull;
+                    }
                 }
 
-                if (nextSpeed == ShipSpeed.Cruise && Input.GetKey(KEY_AHEAD_FULL_MOD)) {
-                    nextSpeed = ShipSpeed.AheadFull;
+                if (Input.GetKeyDown(KEY_ASCEND) && goalAltitude < 2) {
+                    goalAltitude++;
                 }
-            }
+                else if (Input.GetKeyDown(KEY_DESCEND) && goalAltitude > 0) {
+                    goalAltitude--;
+                }
 
-            if (Input.GetKeyDown(KEY_ASCEND) && goalAltitude < 2) {
-                goalAltitude++;
-            }
-            else if (Input.GetKeyDown(KEY_DESCEND) && goalAltitude > 0) {
-                goalAltitude--;
-            }
-
-            if (Input.GetKeyDown(KEY_STEALTH)) {
-                nextSpeed = ShipSpeed.Stealth;
-                //nextMoveDir = Vector2.zero; // expectAcceleration will slow us down
+                if (Input.GetKeyDown(KEY_STEALTH)) {
+                    nextSpeed = ShipSpeed.Stealth;
+                    //nextMoveDir = Vector2.zero; // expectAcceleration will slow us down
+                }
             }
         }
 
-        currentAltitude = Mathf.MoveTowards(currentAltitude, goalAltitude, 0.25f * Time.deltaTime);
+        currentAltitude = Mathf.MoveTowards(currentAltitude, goalAltitude, Time.deltaTime / DEPTH_CHANGE_TIME);
 
         currentSpeed = nextSpeed;
         moveDir = nextMoveDir.normalized;
+
+        ambientSounds.engineOn = currentSpeed != ShipSpeed.Stealth;
 
         float speedScale = 0;
         float expectedSpeed = 0;
@@ -189,6 +214,7 @@ public class ShipInEther : MonoBehaviour {
 
             expectedAcceleration = Mathf.MoveTowards(expectedAcceleration, 1f, Time.deltaTime);
             expectedSpeed = SPEED_MODES[(int)currentSpeed][1];
+
         }
         else {
             expectedAcceleration = Mathf.MoveTowards(expectedAcceleration, 0f, Time.deltaTime);
@@ -196,8 +222,9 @@ public class ShipInEther : MonoBehaviour {
         }
 
         expectedPosition += moveDir * expectedSpeed * expectedAcceleration * Time.deltaTime;
-        if (isAscended) {
+        if (hasSignal) {
             expectedPosition = (Vector2)transform.position; // Recalibrate when ascended
+            expectedError = 0;
         }
 
         // Ensure wrapping
@@ -232,7 +259,14 @@ public class ShipInEther : MonoBehaviour {
         vignette.intensity.value = Mathf.Clamp01(vignetteStrengths.Evaluate(currentAltitude / 2f));
 
         xClock.value = expectedPosition.x;
+        xClock.errorValue = expectedError;
         yClock.value = expectedPosition.y;
+        yClock.errorValue = expectedError;
+
+        if (isAtStandardDepth && !hasLanded) {
+            hasLanded = true;
+            //TODO: Possible landing events
+        }
     }
 
     void FixedUpdate() {
@@ -246,14 +280,30 @@ public class ShipInEther : MonoBehaviour {
         if (currentSpeed == ShipSpeed.Stealth) {
             ri.mass = interactingWithTides ? 100 : nonStandardMass;
             ri.drag = interactingWithTides ? 0f : nonStandardDrag;
+            if (isAtStandardDepth) {
+                expectedError += ERROR_PER_SEC_STEALTH_STANDARD * Time.fixedDeltaTime;
+            }
+            else if (isBuried) {
+                expectedError += ERROR_PER_SEC_BURIED * Time.fixedDeltaTime;
+            }
         }
         else {
             ri.mass = interactingWithTides ? 500 : nonStandardMass;
             ri.drag = interactingWithTides ? 10f : nonStandardDrag;
+
+            if (isAtStandardDepth) {
+                expectedError += ERROR_PER_SEC_IDLE_STANDARD * Time.fixedDeltaTime;
+            }
+            else if (isBuried) {
+                expectedError += ERROR_PER_SEC_BURIED * Time.fixedDeltaTime;
+            }
+            
             if (currentSpeed != ShipSpeed.Halted) {
                 float dragAdjustment = ri.drag * 0.75f;
                 float speed = SPEED_MODES[(int)currentSpeed][0] * etherSampler.altitudeScale;
-                ri.AddForce(moveDir * ri.mass * speed * dragAdjustment * Time.deltaTime);
+                expectedError += SPEED_MODES[(int)currentSpeed][1] * etherSampler.altitudeScale
+                    * SPEED_MODES[(int)currentSpeed][2] * Time.fixedDeltaTime;
+                ri.AddForce(moveDir * ri.mass * speed * dragAdjustment * Time.fixedDeltaTime);
             }
         }
 

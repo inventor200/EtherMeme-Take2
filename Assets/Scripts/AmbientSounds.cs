@@ -34,8 +34,11 @@ public class AmbientSounds : MonoBehaviour {
     public float altitudeMix = 1;
     [HideInInspector]
     public float velocityMix = 0;
+    [HideInInspector]
+    public bool engineOn = true;
     public AudioSource pingSound;
     public AudioSource sparkleAudio;
+    public AudioSource engineAudio;
     public AudioSource layer1Audio;
     public AudioSource layer2Audio;
     public AudioSource layer3Audio;
@@ -58,6 +61,8 @@ public class AmbientSounds : MonoBehaviour {
 
         sparkleAudio.volume = sparkleVolume * lowerMult;
         sparkleAudio.pitch = (sparkleVolume * 0.2f) + Random.Range(1.8f, 2.2f) + (midMult);
+
+        engineAudio.volume = Mathf.MoveTowards(engineAudio.volume, engineOn ? 1f : 0f, Time.deltaTime / 1f);
 
         layer1Audio.volume = topMult;
         layer2Audio.volume = topMult;

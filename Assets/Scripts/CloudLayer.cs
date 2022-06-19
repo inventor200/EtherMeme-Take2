@@ -57,14 +57,14 @@ public class CloudLayer : MonoBehaviour {
         Vector2 direction = normDirection * magDirection * Time.deltaTime;
         Vector2 playerPos = (Vector2)etherSampler.playerTransform.position;
         realPosition = new Vector2(
-            Mathf.Repeat(realPosition.x + direction.x, 3600f),
-            Mathf.Repeat(realPosition.y + direction.y, 3600f)
+            Mathf.Repeat(realPosition.x + direction.x, 14400f),
+            Mathf.Repeat(realPosition.y + direction.y, 14400f)
         );
         //float fullLength = sideLength * scale;
         Vector2 diff = realPosition - playerPos;
-        float nextX = Mathf.Repeat(diff.x, sideLength);
-        float nextY = Mathf.Repeat(diff.y, sideLength);
-        transform.position = new Vector2(playerPos.x + nextX, playerPos.y + nextY) * scale;
+        float nextX = Mathf.Repeat(diff.x, sideLength) * scale;
+        float nextY = Mathf.Repeat(diff.y, sideLength) * scale;
+        transform.position = new Vector2(playerPos.x + nextX, playerPos.y + nextY);
 
         // Make colors flash faster and slower, as though the Ether is breathing.
         float acceleration = (Mathf.Sin(Time.time * 2f) * 2f) + 5f;
@@ -79,7 +79,7 @@ public class CloudLayer : MonoBehaviour {
 
         chosenColor = Color.Lerp(rend.color, chosenColor, 10 * Time.deltaTime);
 
-        float chosenAlpha = altitudeAlpha.Evaluate(Mathf.Clamp01(etherSampler.playerShip.currentAltitude / 2f));
+        float chosenAlpha = altitudeAlpha.Evaluate(Mathf.Clamp(etherSampler.playerShip.currentAltitude, 0f, 3f));
         rend.color = new Color(chosenColor.r, chosenColor.g, chosenColor.b, chosenAlpha);
     }
 }

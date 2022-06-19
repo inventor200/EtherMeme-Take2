@@ -101,7 +101,7 @@ public class EtherSampler : MonoBehaviour {
                     validSpot = false;
                 }
             } while (!validSpot);
-            Transform clone = Instantiate(tidePrefab, new Vector3(x, y, 0), Quaternion.identity);
+            Transform clone = Instantiate(tidePrefab, new Vector3(x, y, 0) + playerTransform.position, Quaternion.identity);
             trArray[i] = clone;
             riArray[i] = clone.GetComponent<Rigidbody2D>();
             cmArray[i] = clone.GetComponent<VisualTide>();

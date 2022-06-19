@@ -50,11 +50,12 @@ public class TopDownGrid : MonoBehaviour {
         float buriedFactor = 1f - Mathf.Clamp01(altitude);
         offsetTransform.anchoredPosition = new Vector2(expectedX, expectedY);
         float ascendedFactor = Mathf.Clamp01(altitude - 1f);
+        float entryFactor = 1f - Mathf.Clamp01(altitude - 2f);
         if (isAscended) {
-            img.color = new Color(1f, 1f, 1f, standardAlpha * ascendedFactor);
+            img.color = new Color(1f, 1f, 1f, standardAlpha * ascendedFactor * entryFactor);
         }
         else {
-            img.color = new Color(1f, 1f, 1f, standardAlpha * (1f - ascendedFactor) * (1f - buriedFactor));
+            img.color = new Color(1f, 1f, 1f, standardAlpha * (1f - ascendedFactor) * (1f - buriedFactor) * entryFactor);
         }
     }
 }
