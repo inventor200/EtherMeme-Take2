@@ -68,6 +68,9 @@ public class ShipInEther : MonoBehaviour {
     public TMPro.TextMeshProUGUI positionText;
     public CoordClock xClock;
     public CoordClock yClock;
+    public DepthDiagram depthDiagram;
+    public DecoderScreen decoderScreen;
+    public TerminalScreen terminalScreen;
     public float currentAltitude { private set; get; } = 3;
     private int goalAltitude = 1;
 
@@ -113,6 +116,9 @@ public class ShipInEther : MonoBehaviour {
     }
 
     private bool hasLanded = false;
+    private float decoderSampleCountdown = 1f;
+    private float decoderSampleNextDelay = 1f;
+    private bool tetherStabilityBroken = false;
 
     void Awake() {
         etherSampler = GameObject.FindGameObjectWithTag("EtherSampler").GetComponent<EtherSampler>();
@@ -129,6 +135,7 @@ public class ShipInEther : MonoBehaviour {
     // Start is called before the first frame update
     void Start() {
         expectedPosition = (Vector2)transform.position;
+        terminalScreen.WriteLine("Mission start; diving to safe depth...");
     }
 
     // Update is called once per frame
@@ -199,7 +206,12 @@ public class ShipInEther : MonoBehaviour {
         currentAltitude = Mathf.MoveTowards(currentAltitude, goalAltitude, Time.deltaTime / DEPTH_CHANGE_TIME);
         bool nowHasSignal = hasSignal;
         if (didHaveSignal != nowHasSignal) {
-            //TODO: Alerts about signal strength change
+            if (nowHasSignal) {
+                terminalScreen.WriteGreenLine("Tether signal aquired; recalibrating...");
+            }
+            else if (hasLanded) {
+                terminalScreen.WriteWarningLine("Tether signal lost");
+            }
         }
 
         currentSpeed = nextSpeed;
@@ -268,9 +280,76 @@ public class ShipInEther : MonoBehaviour {
         yClock.value = expectedPosition.y;
         yClock.errorValue = expectedError;
 
-        if (isAtStandardDepth && !hasLanded) {
-            hasLanded = true;
-            //TODO: Possible landing events
+        if (!hasLanded) {
+            if (currentAltitude <= 2.25f && !tetherStabilityBroken) {
+                terminalScreen.WriteErrorLine("Tether stability system: 10s left");
+                tetherStabilityBroken = true;
+            }
+            else if (isAtStandardDepth) {
+                hasLanded = true;
+                decoderScreen.Clear(true);
+                decoderScreen.WriteLandingMessage();
+                RerollDecoderDelay();
+                terminalScreen.WriteWarningLine("Tether signal lost");
+                //terminalScreen.WriteGreenLine("Standard depth reached; good hunting");
+            }
+        }
+
+        // Fun decoder screen things
+        decoderSampleCountdown = Mathf.Clamp(decoderSampleCountdown - Time.deltaTime, -1, float.PositiveInfinity);
+        if (!decoderScreen.isWriting && decoderSampleCountdown <= 0) {
+            decoderSampleCountdown = decoderSampleNextDelay;
+            RerollDecoderDelay();
+            int probability = 5;
+            if (hasSignal && !isEntering) {
+                probability = 90;
+            }
+            else if (isAscended) {
+                // We only get here when hasSignal = false,
+                // which means we're above standard depth,
+                // but not yet in the really chaotic layers of
+                // the Ether.
+                probability = 50;
+            }
+            else if (isAtStandardDepth || isEntering) {
+                probability = 10;
+            }
+
+            if (Random.Range(0, 100) <= probability) {
+                if (isAscended || isEntering) {
+                    decoderScreen.WriteLostMessage();
+                }
+                else if (isBuried) {
+                    decoderScreen.WriteObsessiveMessage();
+                }
+                else {
+                    decoderScreen.WriteWhimsicalMessage();
+                }
+            }
+        }
+
+        // Instability and Depth Diagram
+        depthDiagram.altitude = currentAltitude;
+        if (isAscended || isEntering) {
+            if (depthDiagram.instabilityLevel == 0) {
+                terminalScreen.WriteErrorLine("Unstable tides; dive to a safer depth!");
+                if (!hasLanded) {
+                    terminalScreen.WriteWarningLine("  (Tether is providing stability for now)");
+                }
+            }
+            depthDiagram.instabilityLevel = 2;
+        }
+        else if (isBuried) {
+            if (depthDiagram.instabilityLevel == 0) {
+                terminalScreen.WriteWarningLine("Swallowing hazard; do not dive deeper!");
+            }
+            depthDiagram.instabilityLevel = 1;
+        }
+        else {
+            if (depthDiagram.instabilityLevel > 0) {
+                terminalScreen.WriteGreenLine("Stable depth reached");
+            }
+            depthDiagram.instabilityLevel = 0;
         }
     }
 
@@ -317,6 +396,10 @@ public class ShipInEther : MonoBehaviour {
             Mathf.Repeat(ri.position.x, 360f),
             Mathf.Repeat(ri.position.y, 360f)
         );
+    }
+
+    private void RerollDecoderDelay() {
+        decoderSampleNextDelay = Random.Range(0.5f, 5f);
     }
 
     public void SendPing(PingChannelID id) {

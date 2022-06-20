@@ -33,9 +33,15 @@ public class DepthDiagram : MonoBehaviour {
     public RectTransform playerLabelLeft;
     public RectTransform playerLabelRight;
     public AnimationCurve altitudeToDepth;
-    public ShipInEther playerShip;
-    public Image instabilityWarning; //TODO: Animate
-    public Image hackerWarning; //TODO: Animate
+    public Image instabilityWarning;
+    public Image hackerWarning;
+
+    [HideInInspector]
+    public int instabilityLevel = 0;
+    [HideInInspector]
+    public bool hackerHasTether = false;
+    [HideInInspector]
+    public float altitude = 3f;
 
     private bool wasShallow = false;
 
@@ -46,7 +52,7 @@ public class DepthDiagram : MonoBehaviour {
 
     // Update is called once per frame
     void Update() {
-        bool isShallow = playerShip.currentAltitude > 1.9f;
+        bool isShallow = altitude > 1.9f;
 
         if (isShallow != wasShallow) {
             wasShallow = isShallow;
@@ -55,6 +61,28 @@ public class DepthDiagram : MonoBehaviour {
         }
 
         playerDot.color = Color.HSVToRGB(0f, 0f, (Mathf.Repeat(Time.time * 2f, 1f) > 0.5f) ? 0f : 1f);
-        playerDot.rectTransform.anchoredPosition = new Vector2(0, altitudeToDepth.Evaluate(Mathf.Clamp(playerShip.currentAltitude, 0f, 3f)));
+        playerDot.rectTransform.anchoredPosition = new Vector2(0, altitudeToDepth.Evaluate(Mathf.Clamp(altitude, 0f, 3f)));
+
+        if (hackerHasTether != hackerWarning.enabled) {
+            hackerWarning.enabled = hackerHasTether;
+        }
+
+        bool hasInstability = instabilityLevel > 0;
+        if (hasInstability != instabilityWarning.enabled) {
+            instabilityWarning.enabled = hasInstability;
+        }
+
+        if (hasInstability) {
+            float brightness = 0;
+            if (instabilityLevel == 1) {
+                brightness = (Mathf.Sin(Time.time * Mathf.PI * 2f) + 1f) / 2f;
+            }
+            else {
+                float blinkSpeed = Mathf.Repeat(Time.time, 2f) > 1f ? 8f : 3f;
+                brightness = Mathf.Repeat(Time.time * blinkSpeed, 1f) > 0.5f ? 1f : 0f;
+            }
+
+            instabilityWarning.color = new Color(1f, instabilityLevel < 2 ? 1f : 0f, 0f, brightness);
+        }
     }
 }
