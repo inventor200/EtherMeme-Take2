@@ -65,7 +65,6 @@ public class ShipInEther : MonoBehaviour {
     public TopDownGrid standardGrid;
     public TopDownGrid ascendedGrid;
     public AnimationCurve vignetteStrengths;
-    public TMPro.TextMeshProUGUI positionText;
     public CoordClock xClock;
     public CoordClock yClock;
     public DepthDiagram depthDiagram;
@@ -251,7 +250,6 @@ public class ShipInEther : MonoBehaviour {
         );
 
         string stealthInd = currentSpeed == ShipSpeed.Stealth ? "\n[Stealth]" : "";
-        positionText.text = string.Format("{0,4}, {1,4}", Mathf.RoundToInt(transform.position.x), Mathf.RoundToInt(transform.position.y)) + stealthInd;
 
         // Adjust visual grid
         float totalAltitudeScale = rootScaleCurve.Evaluate(Mathf.Clamp01(currentAltitude / 2f));

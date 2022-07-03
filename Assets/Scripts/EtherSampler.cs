@@ -71,10 +71,18 @@ public class EtherSampler : MonoBehaviour {
     public Vector2 greaterTideDirection { private set; get; }
     private Vector2 greaterTideSeed;
     public ShipInEther playerShip { private set; get; }
-    public bool[] channelsAscended { private set; get; }
+    //public bool[] channelsAscended { private set; get; }
+    public SignalTrace[,] channelSignals { private set; get; }
 
     void Awake() {
-        channelsAscended = new bool[4];
+        //channelsAscended = new bool[(int)PingChannelID.Count / 2];
+        int channelCount = (int)PingChannelID.Count / 2;
+        channelSignals = new SignalTrace[3, channelCount];
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < channelCount; j++) {
+                channelSignals[i, j] = new SignalTrace();
+            }
+        }
         playerShip = playerTransform.GetComponent<ShipInEther>();
     }
 
@@ -131,8 +139,14 @@ public class EtherSampler : MonoBehaviour {
         lastSparkleVolume = Mathf.Lerp(lastSparkleVolume, sparkleVolume, 8 * Time.deltaTime);
         ambientSounds.sparkleVolume = lastSparkleVolume * 0.25f;
 
-        // TODO: channelAscended has true bits according to what teams are in ascended layers
-        channelsAscended[(int)PingChannelID.Player_WasSeen / 2] = playerShip.hasSignal;
+        // TODO: Add signal to channelSignals according to altitude and pings
+
+        int channelCount = (int)PingChannelID.Count / 2;
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < channelCount; j++) {
+                channelSignals[i, j].Clk(Time.deltaTime);
+            }
+        }
     }
 
     void FixedUpdate() {
@@ -196,7 +210,14 @@ public class EtherSampler : MonoBehaviour {
 
     public void RequestPing(PingChannelID id) {
         //TODO: Calculate ping responses from environment
-        pingRequests.Enqueue(new SonarPing(PingDirection.East, PingStrength.Good, id));
+        ApplyPing(PingDirection.East, PingStrength.Good, id);
+    }
+
+    private void ApplyPing(PingDirection direction, PingStrength strength, PingChannelID id) {
+        pingRequests.Enqueue(new SonarPing(direction, strength, id));
+        if (playerShip.isAtStandardDepth) {
+            channelSignals[1, (int)id / 2].ApplyPing(direction, strength);
+        }
     }
 
     private void PreparePings() {
@@ -296,6 +317,47 @@ public class EtherSampler : MonoBehaviour {
             int index = srArray[d,i].index;
             cmArray[index].Ping(srArray[d,i].distanceOffset, pingRequest.id);
         }
+    }
+}
+
+public class SignalTrace {
+
+    public float strength = 0;
+    public bool hasBlink {
+        get {
+            bool res = _hasBlink;
+            _hasBlink = false;
+            return res;
+        }
+        set {
+            _hasBlink = value;
+        }
+    }
+    private bool _hasBlink = false;
+    public PingDirection lastDirection = PingDirection.Surrounding;
+
+    public void ApplyPing(PingDirection direction, PingStrength strength) {
+        if (strength != PingStrength.Silent) {
+            this.lastDirection = direction;
+            _hasBlink = true;
+            switch(strength) {
+                case PingStrength.Weak:
+                default:
+                    this.strength = 0.5f;
+                    break;
+                case PingStrength.Good:
+                    this.strength = 0.75f;
+                    break;
+                case PingStrength.Strong:
+                    this.strength = 1f;
+                    break;
+            }
+        }
+    }
+
+    public void Clk(float dt) {
+        strength = Mathf.MoveTowards(strength, 0, dt / 10f);
+        _hasBlink |= (Random.Range(0, 100) < 4);
     }
 }
 

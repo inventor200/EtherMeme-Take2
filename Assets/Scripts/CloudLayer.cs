@@ -69,11 +69,13 @@ public class CloudLayer : MonoBehaviour {
         // Make colors flash faster and slower, as though the Ether is breathing.
         float acceleration = (Mathf.Sin(Time.time * 2f) * 2f) + 5f;
         hueCycle = Mathf.Repeat(hueCycle + (acceleration * Time.deltaTime), 5f);
-        int chosenChannel = Mathf.Clamp(Mathf.FloorToInt(hueCycle), 0, 4);
         Color chosenColor = Color.white;
-        if (chosenChannel < 4) {
-            if (etherSampler.channelsAscended[chosenChannel]) {
-                chosenColor = Color.HSVToRGB(hues[chosenChannel], 1f, 1f);
+        if (etherSampler.playerShip.isAscended) {
+            int chosenChannel = Mathf.Clamp(Mathf.FloorToInt(hueCycle), 0, 4);
+            if (chosenChannel < 4) {
+                if (etherSampler.channelSignals[1, chosenChannel].strength > 0.5f) {
+                    chosenColor = Color.HSVToRGB(hues[chosenChannel], 1f, 1f);
+                }
             }
         }
 
