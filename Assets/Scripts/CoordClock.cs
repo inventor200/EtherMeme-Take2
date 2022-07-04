@@ -44,15 +44,15 @@ public class CoordClock : MonoBehaviour {
     // Start is called before the first frame update
     void Awake() {
         hundredsClockHand = new ClockHand(hundredsHand, 360);
-        lowTensClockHand = new ClockHand(lowTensHand, 100);
-        highTensClockHand = new ClockHand(highTensHand, 100);
+        lowTensClockHand = new ClockHand(lowTensHand, 90);
+        highTensClockHand = new ClockHand(highTensHand, 90);
     }
 
     // Update is called once per frame
     void Update() {
         hundredsClockHand.value = value;
-        lowTensClockHand.value = Mathf.Repeat(value - (errorValue / 2f), 100f);
-        highTensClockHand.value = Mathf.Repeat(value + (errorValue / 2f), 100f);
+        lowTensClockHand.value = Mathf.Repeat(value - (errorValue / 2f), 90f);
+        highTensClockHand.value = Mathf.Repeat(value + (errorValue / 2f), 90f);
         hundredsClockHand.Clk(Time.deltaTime);
         lowTensClockHand.Clk(Time.deltaTime);
         highTensClockHand.Clk(Time.deltaTime);

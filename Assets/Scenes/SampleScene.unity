@@ -3864,6 +3864,18 @@ PrefabInstance:
       value: 128
       objectReference: {fileID: 0}
     - target: {fileID: 2998508201289219036, guid: 1fe99ed0b193eab1181435683c526a90, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2998508201289219036, guid: 1fe99ed0b193eab1181435683c526a90, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2998508201289219036, guid: 1fe99ed0b193eab1181435683c526a90, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2998508201289219036, guid: 1fe99ed0b193eab1181435683c526a90, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
       objectReference: {fileID: 0}
@@ -3897,7 +3909,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2998508201289219036, guid: 1fe99ed0b193eab1181435683c526a90, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -248
+      value: -320
       objectReference: {fileID: 0}
     - target: {fileID: 2998508201289219036, guid: 1fe99ed0b193eab1181435683c526a90, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -4283,6 +4295,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 37e68d607777f19dd8c20016f5190b54, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  cruiseChannel: 0
   halo: {fileID: 264491557}
   arrow: {fileID: 1628000690}
   postProcessor: {fileID: 672323965}
@@ -6108,6 +6121,18 @@ PrefabInstance:
     - target: {fileID: 2998508201289219036, guid: 1fe99ed0b193eab1181435683c526a90, type: 3}
       propertyPath: m_SizeDelta.y
       value: 128
+      objectReference: {fileID: 0}
+    - target: {fileID: 2998508201289219036, guid: 1fe99ed0b193eab1181435683c526a90, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2998508201289219036, guid: 1fe99ed0b193eab1181435683c526a90, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2998508201289219036, guid: 1fe99ed0b193eab1181435683c526a90, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1.5
       objectReference: {fileID: 0}
     - target: {fileID: 2998508201289219036, guid: 1fe99ed0b193eab1181435683c526a90, type: 3}
       propertyPath: m_LocalPosition.x
