@@ -359,7 +359,6 @@ MonoBehaviour:
   above: {fileID: 8896119492917481193}
   level: {fileID: 5334106445466638257}
   below: {fileID: 3749779963796665562}
-  compassBack: {fileID: 1926862819330909446}
   compassDot: {fileID: 1926862818868113258}
   labels:
   - {fileID: 1926862818999964042}
@@ -432,7 +431,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -2413806693520163455, guid: 3b8263e6e02ee2544856d283503b3035, type: 3}
+  m_Sprite: {fileID: 21300000, guid: d874a45603c64a9249ec0c583e446e59, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -638,7 +637,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0.5019608, g: 0.5019608, b: 0.5019608, a: 1}
+  m_Color: {r: 0, g: 0, b: 0, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1

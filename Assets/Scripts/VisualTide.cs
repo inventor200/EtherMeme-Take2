@@ -185,12 +185,12 @@ public class VisualTide : MonoBehaviour {
 
     void OnCollisionEnter2D(Collision2D col) {
         if (col.transform.tag == "EtherShip") {
-            ShipInEther playerShip = col.gameObject.GetComponent<ShipInEther>();
-            if (playerShip != null) {
-                if (playerShip.currentSpeed == ShipSpeed.Cruise) {
-                    Ping(0, PingChannelID.Player_WasSeen);
+            EtherAgent etherAgent = col.gameObject.GetComponent<EtherAgent>();
+            if (etherAgent != null) {
+                if (etherAgent.currentSpeed == ShipSpeed.Cruise) {
+                    Ping(0, etherAgent.cruiseChannel);
                 }
-                else if (playerShip.currentSpeed == ShipSpeed.AheadFull) {
+                else if (etherAgent.currentSpeed == ShipSpeed.AheadFull) {
                     Ping(0, PingChannelID.Predator_WasSeen);
                 }
             }

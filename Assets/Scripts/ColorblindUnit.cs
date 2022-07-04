@@ -43,7 +43,6 @@ public class ColorblindUnit : MonoBehaviour {
     public UnitLED above;
     public UnitLED level;
     public UnitLED below;
-    public Image compassBack;
     public Image compassDot;
     public TMPro.TextMeshProUGUI[] labels;
 
@@ -63,7 +62,7 @@ public class ColorblindUnit : MonoBehaviour {
     // Start is called before the first frame update
     void Start() {
         float hue = hues[(int)channelID / 2];
-        compassBack.color = Color.HSVToRGB(hue, 0.5f, 0.25f);
+        compassDot.color = Color.HSVToRGB(hue, 1f, 1f);
         above.hue = hue;
         level.hue = hue;
         below.hue = hue;
