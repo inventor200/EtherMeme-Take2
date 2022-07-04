@@ -26,35 +26,23 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class CoordClock : MonoBehaviour {
+public class ClockHand {
 
-	public RectTransform hundredsHand;
-    public RectTransform lowTensHand;
-    public RectTransform highTensHand;
-
-    [HideInInspector]
+    public RectTransform hand;
     public float value = 0;
-    [HideInInspector]
-    public float errorValue = 0;
 
-    private ClockHand hundredsClockHand;
-    private ClockHand lowTensClockHand;
-    private ClockHand highTensClockHand;
+    private float breadth;
+    private float currentAngle = 0;
 
-    // Start is called before the first frame update
-    void Awake() {
-        hundredsClockHand = new ClockHand(hundredsHand, 360);
-        lowTensClockHand = new ClockHand(lowTensHand, 100);
-        highTensClockHand = new ClockHand(highTensHand, 100);
+    public ClockHand(RectTransform hand, float breadth) {
+        this.hand = hand;
+        this.breadth = breadth;
+        this.currentAngle = 180f; // Dials start pointing down
     }
 
-    // Update is called once per frame
-    void Update() {
-        hundredsClockHand.value = value;
-        lowTensClockHand.value = Mathf.Repeat(value - (errorValue / 2f), 100f);
-        highTensClockHand.value = Mathf.Repeat(value + (errorValue / 2f), 100f);
-        hundredsClockHand.Clk(Time.deltaTime);
-        lowTensClockHand.Clk(Time.deltaTime);
-        highTensClockHand.Clk(Time.deltaTime);
+    public void Clk(float dt) {
+        float nextAngle = 360f * (value / breadth);
+        currentAngle = Mathf.MoveTowardsAngle(currentAngle, nextAngle, 720f * dt);
+        hand.localRotation = Quaternion.Euler(0, 0, -currentAngle);
     }
 }

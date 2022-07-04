@@ -50,14 +50,11 @@ public class EtherSampler : MonoBehaviour {
             return etherCam.orthographicSize * 2f;
         }
     }
-    public float altitudeScale {
-        get {
-            return 1f + (Mathf.Clamp01(playerShip.currentAltitude - 1f) * (ascendedScale - 1f));
-        }
-    }
     [Space]
     public AmbientSounds ambientSounds;
-    
+    [Space]
+    public EtherAltitude[] altitudes;
+
     private TideEngine tideEngine;
     private Transform[] trArray;
     private Rigidbody2D[] riArray;
@@ -67,15 +64,12 @@ public class EtherSampler : MonoBehaviour {
     private Queue<SonarPing> pingRequests;
     private bool pingRequiresSort = true;
     private float lastSparkleVolume = 0;
-    //public float altitude { private set; get; }
     public Vector2 greaterTideDirection { private set; get; }
     private Vector2 greaterTideSeed;
     public ShipInEther playerShip { private set; get; }
-    //public bool[] channelsAscended { private set; get; }
     public SignalTrace[,] channelSignals { private set; get; }
 
     void Awake() {
-        //channelsAscended = new bool[(int)PingChannelID.Count / 2];
         int channelCount = (int)PingChannelID.Count / 2;
         channelSignals = new SignalTrace[3, channelCount];
         for (int i = 0; i < 3; i++) {
@@ -89,7 +83,6 @@ public class EtherSampler : MonoBehaviour {
     // Start is called before the first frame update
     void Start() {
         greaterTideSeed = Random.insideUnitCircle * 100;
-        //altitude = 1;
         trArray = new Transform[startingTideCount];
         riArray = new Rigidbody2D[startingTideCount];
         cmArray = new VisualTide[startingTideCount];
@@ -158,8 +151,8 @@ public class EtherSampler : MonoBehaviour {
 
         // Do boids
         // We're avoiding operations that affect garbage collection as much as possible
-        int tideMode;
-        if (playerShip.currentAltitude >= 1.9f) {
+        TideMode tideMode = playerShip.altitudeProfile.tideMode;
+        /*if (playerShip.currentAltitude >= 1.9f) {
             tideMode = 2;
         }
         else if (playerShip.isBuried) {
@@ -167,30 +160,30 @@ public class EtherSampler : MonoBehaviour {
         }
         else {
             tideMode = 1;
-        }
+        }*/
 
-        tideEngine.Setup(tideMode != 1);
+        tideEngine.Setup(tideMode != TideMode.Standard);
         for (int i = 0; i < startingTideCount; i++) {
             tideEngine.StartIndex(i);
             switch (tideMode) {
-                case 0:
-                case 1:
+                case TideMode.Crowding:
+                case TideMode.Standard:
                     tideEngine.CacheNextNoiseForce();
                     tideEngine.CalculatePeerPressure();
                     break;
             }
             tideEngine.StartPlayerPressure();
             switch (tideMode) {
-                case 0:
+                case TideMode.Crowding:
                     tideEngine.CalculatePlayerCrowding();
                     break;
-                case 1:
+                case TideMode.Standard:
                     tideEngine.CalculatePlayerPressure();
                     break;
             }
             tideEngine.DoWrapping();
             switch (tideMode) {
-                case 1:
+                case TideMode.Standard:
                     tideEngine.ApplyForces(greaterTideX, greaterTideY, greaterTideHeave);
                     break;
                 default:
@@ -215,7 +208,7 @@ public class EtherSampler : MonoBehaviour {
 
     private void ApplyPing(PingDirection direction, PingStrength strength, PingChannelID id) {
         pingRequests.Enqueue(new SonarPing(direction, strength, id));
-        if (playerShip.isAtStandardDepth) {
+        if (playerShip.altitudeProfile.allowSonarPing) {
             channelSignals[1, (int)id / 2].ApplyPing(direction, strength);
         }
     }
@@ -318,98 +311,4 @@ public class EtherSampler : MonoBehaviour {
             cmArray[index].Ping(srArray[d,i].distanceOffset, pingRequest.id);
         }
     }
-}
-
-public class SignalTrace {
-
-    public float strength = 0;
-    public bool hasBlink {
-        get {
-            bool res = _hasBlink;
-            _hasBlink = false;
-            return res;
-        }
-        set {
-            _hasBlink = value;
-        }
-    }
-    private bool _hasBlink = false;
-    public PingDirection lastDirection = PingDirection.Surrounding;
-
-    public void ApplyPing(PingDirection direction, PingStrength strength) {
-        if (strength != PingStrength.Silent) {
-            this.lastDirection = direction;
-            _hasBlink = true;
-            switch(strength) {
-                case PingStrength.Weak:
-                default:
-                    this.strength = 0.5f;
-                    break;
-                case PingStrength.Good:
-                    this.strength = 0.75f;
-                    break;
-                case PingStrength.Strong:
-                    this.strength = 1f;
-                    break;
-            }
-        }
-    }
-
-    public void Clk(float dt) {
-        strength = Mathf.MoveTowards(strength, 0, dt / 10f);
-        _hasBlink |= (Random.Range(0, 100) < 4);
-    }
-}
-
-public class SonarPing {
-
-    public PingDirection direction { private set; get; }
-    public PingStrength strength { private set; get; }
-    public PingChannelID id { private set; get; }
-
-    public SonarPing(PingDirection direction, PingStrength strength, PingChannelID id) {
-        this.direction = direction;
-        this.strength = strength;
-        this.id = id;
-    }
-}
-
-public class SonarSortable {
-    public int index;
-    public float dotPr;
-    public float dist;
-    public float lastScore { private set; get; }
-    public float distanceOffset {
-        get {
-            return lastScore / 4f;
-        }
-    }
-
-    public SonarSortable(int index, float dotPr, float dist) {
-        this.index = index;
-        this.dotPr = dotPr;
-        this.dist = dist;
-        this.lastScore = 0;
-    }
-
-    public void CacheScore() {
-        float dotScore = (2.5f - (dotPr + 1f)) * 2;
-        lastScore = dotScore * dist;
-    }
-}
-
-public enum PingStrength {
-    Strong = 3,
-    Good = 2,
-    Weak = 1,
-    Silent = 0
-}
-
-public enum PingDirection {
-    Surrounding = 0,
-    North = 1,
-    East = 2,
-    South = 3,
-    West = 4,
-    Count = 5
 }

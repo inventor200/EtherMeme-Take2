@@ -22,36 +22,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine.UI;
-using UnityEngine;
+public class SonarPing {
 
-public class UnitLED : MonoBehaviour {
+    public PingDirection direction { private set; get; }
+    public PingStrength strength { private set; get; }
+    public PingChannelID id { private set; get; }
 
-	private Image led;
-    [HideInInspector]
-    public float hue;
-
-    private float flash;
-    private float brightness;
-
-    // Start is called before the first frame update
-    void Awake() {
-        led = GetComponent<Image>();
-    }
-
-    // Update is called once per frame
-    void Update() {
-        flash = Mathf.MoveTowards(flash, 0, Time.deltaTime * 8);
-        brightness = Mathf.MoveTowards(brightness, 0, Time.deltaTime / 3f);
-        float curvedFlash = flash * 1.5f;
-        float totalBrightness = Mathf.Clamp01(Mathf.Max(curvedFlash, brightness));
-        led.color = Color.HSVToRGB(hue, 1f, (totalBrightness * 0.9f) + 0.1f);
-    }
-
-    public void Blink(float strength) {
-        flash = Mathf.Clamp01(strength);
-        brightness = Mathf.Max(flash * 0.85f, brightness);
+    public SonarPing(PingDirection direction, PingStrength strength, PingChannelID id) {
+        this.direction = direction;
+        this.strength = strength;
+        this.id = id;
     }
 }

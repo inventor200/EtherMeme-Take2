@@ -22,36 +22,26 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine.UI;
-using UnityEngine;
-
-public class UnitLED : MonoBehaviour {
-
-	private Image led;
-    [HideInInspector]
-    public float hue;
-
-    private float flash;
-    private float brightness;
-
-    // Start is called before the first frame update
-    void Awake() {
-        led = GetComponent<Image>();
+public class SonarSortable {
+    public int index;
+    public float dotPr;
+    public float dist;
+    public float lastScore { private set; get; }
+    public float distanceOffset {
+        get {
+            return lastScore / 4f;
+        }
     }
 
-    // Update is called once per frame
-    void Update() {
-        flash = Mathf.MoveTowards(flash, 0, Time.deltaTime * 8);
-        brightness = Mathf.MoveTowards(brightness, 0, Time.deltaTime / 3f);
-        float curvedFlash = flash * 1.5f;
-        float totalBrightness = Mathf.Clamp01(Mathf.Max(curvedFlash, brightness));
-        led.color = Color.HSVToRGB(hue, 1f, (totalBrightness * 0.9f) + 0.1f);
+    public SonarSortable(int index, float dotPr, float dist) {
+        this.index = index;
+        this.dotPr = dotPr;
+        this.dist = dist;
+        this.lastScore = 0;
     }
 
-    public void Blink(float strength) {
-        flash = Mathf.Clamp01(strength);
-        brightness = Mathf.Max(flash * 0.85f, brightness);
+    public void CacheScore() {
+        float dotScore = (2.5f - (dotPr + 1f)) * 2;
+        lastScore = dotScore * dist;
     }
 }

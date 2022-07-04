@@ -38,8 +38,9 @@ Stealth: Sacrifice navigation and pings for invisibility and near-zero trace
     2. Wards away predators (when complete).
     3. Makes you VERY visible.
     4. Creates a zone where stealth fails (when complete).
-    5. Dumps a lot of your trace into the area, creating a strong, all-surrounding response if pinged.
-    6. Makes trace last a LOT longer.
+    5. Excitement is usually target to a subject, and tides will automatically ping for the subject while other ships are present.
+        This allows someone to get info without leaving an asking trace.
+    6. Makes trace of subject last a LOT longer.
 
 [5] The "Seizure" ping action can only be performed 3 times, and does a few things:
     1. Anyone caught at the scene of a seizures gets 1 of 2 strikes.

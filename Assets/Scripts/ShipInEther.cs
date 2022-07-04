@@ -39,9 +39,6 @@ public class ShipInEther : MonoBehaviour {
     public static KeyCode KEY_ASCEND = KeyCode.R;
     public static KeyCode KEY_DESCEND = KeyCode.F;
 
-    private static float STANDARD_DEPTH_TOLERANCE = 0.1f;
-    private static float ENTRY_ALTITUDE = 2.1f;
-
     private static float DEPTH_CHANGE_TIME = 10f;
 
     // Force, avg m/s, avg error per meter
@@ -61,17 +58,16 @@ public class ShipInEther : MonoBehaviour {
     [Space]
     public AmbientSounds ambientSounds;
     public RectTransform rootGrid;
-    public AnimationCurve rootScaleCurve;
     public TopDownGrid standardGrid;
     public TopDownGrid ascendedGrid;
-    public AnimationCurve vignetteStrengths;
     public CoordClock xClock;
     public CoordClock yClock;
     public DepthDiagram depthDiagram;
-    public DecoderScreen decoderScreen;
     public TerminalScreen terminalScreen;
-    public float currentAltitude { private set; get; } = 3;
-    private int goalAltitude = 1;
+    public float currentAltitude { private set; get; }
+    private int goalAltitudeIndex = 1;
+    public EtherAltitude altitudeProfile { private set; get; }
+    public EtherAltitude altitudeBucket { private set; get; }
 
     private EtherSampler etherSampler;
     private Rigidbody2D ri;
@@ -86,7 +82,7 @@ public class ShipInEther : MonoBehaviour {
     private float expectedAcceleration = 0;
     private float expectedError = 0;
     private bool wasInteractingWithTides = false;
-    private bool interactingWithTides = true;
+    /*private bool interactingWithTides = true;
     public bool isEntering {
         get {
             return currentAltitude >= ENTRY_ALTITUDE;
@@ -112,7 +108,7 @@ public class ShipInEther : MonoBehaviour {
             return (currentAltitude >= (1f - STANDARD_DEPTH_TOLERANCE))
                 && (currentAltitude <= 1f + STANDARD_DEPTH_TOLERANCE);
         }
-    }
+    }*/
 
     private bool hasLanded = false;
     private float decoderSampleCountdown = 1f;
@@ -129,6 +125,10 @@ public class ShipInEther : MonoBehaviour {
             EtherSampler.GetHueFromColor(etherSampler.freighterHue)
         };
         postProcessor.profile.TryGetSettings<Vignette>(out vignette);
+        altitudeProfile = new EtherAltitude();
+        //altitudeBucket = etherSampler.altitudes[etherSampler.altitudes.Length - 1];
+        currentAltitude = etherSampler.altitudes[etherSampler.altitudes.Length - 1].mainAltitude;
+        altitudeBucket = EtherAltitude.UpdateAltitudeProfileAndGetBucket(currentAltitude, altitudeProfile, etherSampler.altitudes);
     }
 
     // Start is called before the first frame update
@@ -138,12 +138,12 @@ public class ShipInEther : MonoBehaviour {
     }
 
     // Update is called once per frame
-    // TODO: Refactor this class
+    // TODO: Refactor this class into player ship, general ship/agent, and map grid
     void Update() {
         pingMagnitude = Mathf.Clamp01(pingMagnitude - (Time.deltaTime / 2f));
         Color haloColor = Color.HSVToRGB(pingHue, 1f, pingMagnitude);
         
-        if (Input.GetKeyDown(KeyCode.Space) && hasLanded) {
+        if (Input.GetKeyDown(KeyCode.Space) && hasLanded && altitudeProfile.allowControlInput && altitudeProfile.allowSonarPing) {
             SendPing(PingChannelID.Player_WasSeen);
         }
 
@@ -160,50 +160,63 @@ public class ShipInEther : MonoBehaviour {
             float blendInColor = 0.15f;
             haloColor = new Color(blendInColor, blendInColor, blendInColor, 1f);
         }
-        else {
-            nextSpeed = ShipSpeed.Halted;
+        else if (hasLanded && altitudeProfile.allowControlInput) {
+            if (Input.GetKey(KEY_NORTH)) {
+                nextSpeed = ShipSpeed.Cruise;
+                nextMoveDir += Vector2.up;
+            }
+            if (Input.GetKey(KEY_WEST)) {
+                nextSpeed = ShipSpeed.Cruise;
+                nextMoveDir += Vector2.left;
+            }
+            if (Input.GetKey(KEY_SOUTH)) {
+                nextSpeed = ShipSpeed.Cruise;
+                nextMoveDir += Vector2.down;
+            }
+            if (Input.GetKey(KEY_EAST)) {
+                nextSpeed = ShipSpeed.Cruise;
+                nextMoveDir += Vector2.right;
+            }
 
-            if (hasLanded) {
-                if (!isBuried && !isEntering) {
-                    if (Input.GetKey(KEY_NORTH)) {
-                        nextSpeed = ShipSpeed.Cruise;
-                        nextMoveDir += Vector2.up;
-                    }
-                    if (Input.GetKey(KEY_WEST)) {
-                        nextSpeed = ShipSpeed.Cruise;
-                        nextMoveDir += Vector2.left;
-                    }
-                    if (Input.GetKey(KEY_SOUTH)) {
-                        nextSpeed = ShipSpeed.Cruise;
-                        nextMoveDir += Vector2.down;
-                    }
-                    if (Input.GetKey(KEY_EAST)) {
-                        nextSpeed = ShipSpeed.Cruise;
-                        nextMoveDir += Vector2.right;
-                    }
+            if (nextSpeed == ShipSpeed.Cruise && Input.GetKey(KEY_AHEAD_FULL_MOD)) {
+                nextSpeed = ShipSpeed.AheadFull;
+            }
 
-                    if (nextSpeed == ShipSpeed.Cruise && Input.GetKey(KEY_AHEAD_FULL_MOD)) {
-                        nextSpeed = ShipSpeed.AheadFull;
-                    }
-                }
+            int altitudeChange = 0;
 
-                if (Input.GetKeyDown(KEY_ASCEND) && goalAltitude < 2) {
-                    goalAltitude++;
+            if (Input.GetKeyDown(KEY_ASCEND) && goalAltitudeIndex < etherSampler.altitudes.Length - 1) {
+                altitudeChange++;
+                if (etherSampler.altitudes[goalAltitudeIndex + altitudeChange].forcePassThrough) {
+                    altitudeChange++; // Pass through
                 }
-                else if (Input.GetKeyDown(KEY_DESCEND) && goalAltitude > 0) {
-                    goalAltitude--;
+            }
+            else if (Input.GetKeyDown(KEY_DESCEND) && goalAltitudeIndex > 0) {
+                altitudeChange--;
+                if (etherSampler.altitudes[goalAltitudeIndex + altitudeChange].forcePassThrough) {
+                    altitudeChange--; // Pass through
                 }
+            }
 
-                if (Input.GetKeyDown(KEY_STEALTH)) {
-                    nextSpeed = ShipSpeed.Stealth;
-                    //nextMoveDir = Vector2.zero; // expectAcceleration will slow us down
-                }
+            if (etherSampler.altitudes[goalAltitudeIndex + altitudeChange].hasExclusiveEntry) {
+                altitudeChange = 0; // Cancel change
+            }
+
+            goalAltitudeIndex += altitudeChange;
+
+            if (Input.GetKeyDown(KEY_STEALTH)) {
+                nextSpeed = ShipSpeed.Stealth;
             }
         }
 
-        bool didHaveSignal = hasSignal;
+        if (!altitudeProfile.allowLateralMovement) {
+            nextSpeed = ShipSpeed.Halted;
+        }
+
+        bool didHaveSignal = altitudeProfile.hasTetherSignal;
+        float goalAltitude = etherSampler.altitudes[goalAltitudeIndex].mainAltitude;
         currentAltitude = Mathf.MoveTowards(currentAltitude, goalAltitude, Time.deltaTime / DEPTH_CHANGE_TIME);
-        bool nowHasSignal = hasSignal;
+        altitudeBucket = EtherAltitude.UpdateAltitudeProfileAndGetBucket(currentAltitude, altitudeProfile, etherSampler.altitudes);
+        bool nowHasSignal = altitudeProfile.hasTetherSignal;
         if (didHaveSignal != nowHasSignal) {
             if (nowHasSignal) {
                 terminalScreen.WriteGreenLine("Tether signal aquired; recalibrating...");
@@ -226,7 +239,7 @@ public class ShipInEther : MonoBehaviour {
             float currentAngle = arrow.localRotation.eulerAngles.z;
 
             arrow.localRotation = Quaternion.Euler(0, 0, Mathf.MoveTowardsAngle(currentAngle, nextAngle, 360f * Time.deltaTime));
-            speedScale = ri.velocity.magnitude / (SPEED_MODES[1][1] * etherSampler.altitudeScale);
+            speedScale = ri.velocity.magnitude / (SPEED_MODES[1][1] * altitudeProfile.moveScale);
 
             expectedAcceleration = Mathf.MoveTowards(expectedAcceleration, 1f, Time.deltaTime);
             expectedSpeed = SPEED_MODES[(int)currentSpeed][1];
@@ -238,7 +251,7 @@ public class ShipInEther : MonoBehaviour {
         }
 
         expectedPosition += moveDir * expectedSpeed * expectedAcceleration * Time.deltaTime;
-        if (hasSignal) {
+        if (altitudeProfile.hasTetherSignal) {
             expectedPosition = (Vector2)transform.position; // Recalibrate when ascended
             expectedError = 0;
         }
@@ -252,7 +265,8 @@ public class ShipInEther : MonoBehaviour {
         string stealthInd = currentSpeed == ShipSpeed.Stealth ? "\n[Stealth]" : "";
 
         // Adjust visual grid
-        float totalAltitudeScale = rootScaleCurve.Evaluate(Mathf.Clamp01(currentAltitude / 2f));
+        //float totalAltitudeScale = rootScaleCurve.Evaluate(Mathf.Clamp01(currentAltitude / 2f));
+        float totalAltitudeScale = altitudeProfile.mapScale;
         rootGrid.localScale = new Vector3(totalAltitudeScale, totalAltitudeScale, totalAltitudeScale);
         standardGrid.AdjustTo(expectedPosition, currentAltitude, etherSampler.cameraScale);
         ascendedGrid.AdjustTo(expectedPosition, currentAltitude, etherSampler.cameraScale);
@@ -268,10 +282,11 @@ public class ShipInEther : MonoBehaviour {
         ambientSounds.velocityMix = speedScale;
 
         // Prepare to change collision layer, if necessary
-        interactingWithTides = isAtStandardDepth;
+        //interactingWithTides = altitudeProfile.allowTideInteraction;
 
         // Control vignette intensity with altitude
-        vignette.intensity.value = Mathf.Clamp01(vignetteStrengths.Evaluate(currentAltitude / 2f));
+        //vignette.intensity.value = Mathf.Clamp01(vignetteStrengths.Evaluate(currentAltitude / 2f));
+        vignette.intensity.value = altitudeProfile.vignetteFactor;
 
         xClock.value = expectedPosition.x;
         xClock.errorValue = expectedError;
@@ -283,52 +298,15 @@ public class ShipInEther : MonoBehaviour {
                 terminalScreen.WriteErrorLine("Tether stability system: 10s left");
                 tetherStabilityBroken = true;
             }
-            else if (isAtStandardDepth) {
+            else if (altitudeProfile.allowSonarPing) {
                 hasLanded = true;
-                decoderScreen.Clear(true);
-                decoderScreen.WriteLandingMessage();
-                RerollDecoderDelay();
                 terminalScreen.WriteWarningLine("Tether signal lost");
-                //terminalScreen.WriteGreenLine("Standard depth reached; good hunting");
-            }
-        }
-
-        // Fun decoder screen things
-        decoderSampleCountdown = Mathf.Clamp(decoderSampleCountdown - Time.deltaTime, -1, float.PositiveInfinity);
-        if (!decoderScreen.isWriting && decoderSampleCountdown <= 0) {
-            decoderSampleCountdown = decoderSampleNextDelay;
-            RerollDecoderDelay();
-            int probability = 5;
-            if (hasSignal && !isEntering) {
-                probability = 90;
-            }
-            else if (isAscended) {
-                // We only get here when hasSignal = false,
-                // which means we're above standard depth,
-                // but not yet in the really chaotic layers of
-                // the Ether.
-                probability = 50;
-            }
-            else if (isAtStandardDepth || isEntering) {
-                probability = 10;
-            }
-
-            if (Random.Range(0, 100) <= probability) {
-                if (isAscended || isEntering) {
-                    decoderScreen.WriteLostMessage();
-                }
-                else if (isBuried) {
-                    decoderScreen.WriteObsessiveMessage();
-                }
-                else {
-                    decoderScreen.WriteWhimsicalMessage();
-                }
             }
         }
 
         // Instability and Depth Diagram
-        depthDiagram.altitude = currentAltitude;
-        if (isAscended || isEntering) {
+        depthDiagram.yOffset = altitudeProfile.diagramYOffset;
+        if (altitudeProfile.hasInstabilityHazard) {
             if (depthDiagram.instabilityLevel == 0) {
                 terminalScreen.WriteErrorLine("Unstable tides; dive to a safer depth!");
                 if (!hasLanded) {
@@ -337,7 +315,7 @@ public class ShipInEther : MonoBehaviour {
             }
             depthDiagram.instabilityLevel = 2;
         }
-        else if (isBuried) {
+        else if (altitudeProfile.hasBurialHazard) {
             if (depthDiagram.instabilityLevel == 0) {
                 terminalScreen.WriteWarningLine("Swallowing hazard; do not dive deeper!");
             }
@@ -352,38 +330,38 @@ public class ShipInEther : MonoBehaviour {
     }
 
     void FixedUpdate() {
-        if (wasInteractingWithTides != interactingWithTides) {
-            wasInteractingWithTides = interactingWithTides;
-            gameObject.layer = LayerMask.NameToLayer(interactingWithTides ? "Standard" : "NonStandard");
+        if (wasInteractingWithTides != altitudeProfile.allowTideInteraction) {
+            wasInteractingWithTides = altitudeProfile.allowTideInteraction;
+            gameObject.layer = LayerMask.NameToLayer(altitudeProfile.allowTideInteraction ? "Standard" : "NonStandard");
         }
         
         float nonStandardMass = 100000;
         float nonStandardDrag = 100f;
         if (currentSpeed == ShipSpeed.Stealth) {
-            ri.mass = interactingWithTides ? 100 : nonStandardMass;
-            ri.drag = interactingWithTides ? 0f : nonStandardDrag;
-            if (isAtStandardDepth) {
+            ri.mass = altitudeProfile.allowTideInteraction ? 100 : nonStandardMass;
+            ri.drag = altitudeProfile.allowTideInteraction ? 0f : nonStandardDrag;
+            if (altitudeProfile.tideMode == TideMode.Standard) {
                 expectedError += ERROR_PER_SEC_STEALTH_STANDARD * Time.fixedDeltaTime;
             }
-            else if (isBuried) {
+            else if (altitudeProfile.tideMode == TideMode.Crowding) {
                 expectedError += ERROR_PER_SEC_BURIED * Time.fixedDeltaTime;
             }
         }
         else {
-            ri.mass = interactingWithTides ? 500 : nonStandardMass;
-            ri.drag = interactingWithTides ? 10f : nonStandardDrag;
+            ri.mass = altitudeProfile.allowTideInteraction ? 500 : nonStandardMass;
+            ri.drag = altitudeProfile.allowTideInteraction ? 10f : nonStandardDrag;
 
-            if (isAtStandardDepth) {
+            if (altitudeProfile.tideMode == TideMode.Standard) {
                 expectedError += ERROR_PER_SEC_IDLE_STANDARD * Time.fixedDeltaTime;
             }
-            else if (isBuried) {
+            else if (altitudeProfile.tideMode == TideMode.Crowding) {
                 expectedError += ERROR_PER_SEC_BURIED * Time.fixedDeltaTime;
             }
             
-            if (currentSpeed != ShipSpeed.Halted) {
+            if (currentSpeed != ShipSpeed.Halted && altitudeProfile.allowLateralMovement) {
                 float dragAdjustment = ri.drag * 0.75f;
-                float speed = SPEED_MODES[(int)currentSpeed][0] * etherSampler.altitudeScale;
-                expectedError += SPEED_MODES[(int)currentSpeed][1] * etherSampler.altitudeScale
+                float speed = SPEED_MODES[(int)currentSpeed][0] * altitudeProfile.moveScale;
+                expectedError += SPEED_MODES[(int)currentSpeed][1] * altitudeProfile.moveScale
                     * SPEED_MODES[(int)currentSpeed][2] * Time.fixedDeltaTime;
                 ri.AddForce(moveDir * ri.mass * speed * dragAdjustment * Time.fixedDeltaTime);
             }
@@ -396,21 +374,10 @@ public class ShipInEther : MonoBehaviour {
         );
     }
 
-    private void RerollDecoderDelay() {
-        decoderSampleNextDelay = Random.Range(0.5f, 5f);
-    }
-
     public void SendPing(PingChannelID id) {
         ambientSounds.pingSound.Play();
         pingMagnitude = 1f;
         pingHue = hues[(int)id / 2];
         etherSampler.RequestPing(id);
     }
-}
-
-public enum ShipSpeed {
-    Stealth = -2,
-    Halted = -1,
-    Cruise = 0,
-    AheadFull = 1
 }

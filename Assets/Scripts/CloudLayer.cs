@@ -50,7 +50,8 @@ public class CloudLayer : MonoBehaviour {
 
     // Update is called once per frame
     void Update() {
-        float scale = etherSampler.ascendedScale / etherSampler.altitudeScale;
+        //float scale = etherSampler.ascendedScale / etherSampler.altitudeScale;
+        float scale = etherSampler.ascendedScale / etherSampler.playerShip.altitudeProfile.moveScale;
         transform.localScale = new Vector3(scale, scale, scale);
         Vector2 normDirection = etherSampler.greaterTideDirection.normalized;
         float magDirection = (etherSampler.greaterTideDirection.magnitude / 100f) + 10f;
@@ -70,7 +71,7 @@ public class CloudLayer : MonoBehaviour {
         float acceleration = (Mathf.Sin(Time.time * 2f) * 2f) + 5f;
         hueCycle = Mathf.Repeat(hueCycle + (acceleration * Time.deltaTime), 5f);
         Color chosenColor = Color.white;
-        if (etherSampler.playerShip.isAscended) {
+        if (etherSampler.playerShip.altitudeProfile.hasEasyListening) {
             int chosenChannel = Mathf.Clamp(Mathf.FloorToInt(hueCycle), 0, 4);
             if (chosenChannel < 4) {
                 if (etherSampler.channelSignals[1, chosenChannel].strength > 0.5f) {
@@ -81,7 +82,8 @@ public class CloudLayer : MonoBehaviour {
 
         chosenColor = Color.Lerp(rend.color, chosenColor, 10 * Time.deltaTime);
 
-        float chosenAlpha = altitudeAlpha.Evaluate(Mathf.Clamp(etherSampler.playerShip.currentAltitude, 0f, 3f));
+        //float chosenAlpha = altitudeAlpha.Evaluate(Mathf.Clamp(etherSampler.playerShip.currentAltitude, 0f, 3f));
+        float chosenAlpha = etherSampler.playerShip.altitudeProfile.cloudAlpha;
         rend.color = new Color(chosenColor.r, chosenColor.g, chosenColor.b, chosenAlpha);
     }
 }

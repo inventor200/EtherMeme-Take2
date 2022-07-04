@@ -22,36 +22,43 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine.UI;
-using UnityEngine;
+public enum PingChannelID {
+    Player_WasSeen = 0,
+    Player_WasAsked = 1,
+    Target_WasSeen = 2,
+    Target_WasAsked = 3,
+    Predator_WasSeen = 4,
+    Predator_WasAsked = 5,
+    Freighter_WasSeen = 6,
+    Freighter_WasAsked = 7,
+    Count = 8
+}
 
-public class UnitLED : MonoBehaviour {
+public enum PingStrength {
+    Strong = 3,
+    Good = 2,
+    Weak = 1,
+    Silent = 0
+}
 
-	private Image led;
-    [HideInInspector]
-    public float hue;
+public enum PingDirection {
+    Surrounding = 0,
+    North = 1,
+    East = 2,
+    South = 3,
+    West = 4,
+    Count = 5
+}
 
-    private float flash;
-    private float brightness;
+public enum ShipSpeed {
+    Stealth = -2,
+    Halted = -1,
+    Cruise = 0,
+    AheadFull = 1
+}
 
-    // Start is called before the first frame update
-    void Awake() {
-        led = GetComponent<Image>();
-    }
-
-    // Update is called once per frame
-    void Update() {
-        flash = Mathf.MoveTowards(flash, 0, Time.deltaTime * 8);
-        brightness = Mathf.MoveTowards(brightness, 0, Time.deltaTime / 3f);
-        float curvedFlash = flash * 1.5f;
-        float totalBrightness = Mathf.Clamp01(Mathf.Max(curvedFlash, brightness));
-        led.color = Color.HSVToRGB(hue, 1f, (totalBrightness * 0.9f) + 0.1f);
-    }
-
-    public void Blink(float strength) {
-        flash = Mathf.Clamp01(strength);
-        brightness = Mathf.Max(flash * 0.85f, brightness);
-    }
+public enum TideMode {
+    Standard,
+    Unseen,
+    Crowding
 }

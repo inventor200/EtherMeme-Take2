@@ -41,7 +41,7 @@ public class DepthDiagram : MonoBehaviour {
     [HideInInspector]
     public bool hackerHasTether = false;
     [HideInInspector]
-    public float altitude = 3f;
+    public float yOffset = -104f;
 
     private bool wasShallow = false;
 
@@ -52,7 +52,7 @@ public class DepthDiagram : MonoBehaviour {
 
     // Update is called once per frame
     void Update() {
-        bool isShallow = altitude > 1.9f;
+        bool isShallow = yOffset > -24;
 
         if (isShallow != wasShallow) {
             wasShallow = isShallow;
@@ -61,7 +61,8 @@ public class DepthDiagram : MonoBehaviour {
         }
 
         playerDot.color = Color.HSVToRGB(0f, 0f, (Mathf.Repeat(Time.time * 2f, 1f) > 0.5f) ? 0f : 1f);
-        playerDot.rectTransform.anchoredPosition = new Vector2(0, altitudeToDepth.Evaluate(Mathf.Clamp(altitude, 0f, 3f)));
+        //playerDot.rectTransform.anchoredPosition = new Vector2(0, altitudeToDepth.Evaluate(Mathf.Clamp(altitude, 0f, 3f)));
+        playerDot.rectTransform.anchoredPosition = new Vector2(0, yOffset);
 
         if (hackerHasTether != hackerWarning.enabled) {
             hackerWarning.enabled = hackerHasTether;

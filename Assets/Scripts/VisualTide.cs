@@ -113,8 +113,7 @@ public class VisualTide : MonoBehaviour {
 
         float masterValue = Mathf.Clamp01((standardValue * delta) + (pingValue * 0.75f));
         glowVolume = masterValue;
-        masterValue = Mathf.Clamp01(masterValue
-            * Mathf.Clamp01(2f - etherSampler.playerShip.currentAltitude));
+        masterValue = Mathf.Clamp01(masterValue * etherSampler.playerShip.altitudeProfile.tideAlpha);
         
         bool renderAtAll = masterValue > 0.01f;
         if (rend.enabled != renderAtAll) {
@@ -244,16 +243,4 @@ public class PingChannel {
             }
         }
     }
-}
-
-public enum PingChannelID {
-    Player_WasSeen = 0,
-    Player_WasAsked = 1,
-    Target_WasSeen = 2,
-    Target_WasAsked = 3,
-    Predator_WasSeen = 4,
-    Predator_WasAsked = 5,
-    Freighter_WasSeen = 6,
-    Freighter_WasAsked = 7,
-    Count = 8
 }

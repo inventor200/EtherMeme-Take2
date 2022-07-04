@@ -22,39 +22,45 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-public class CoordClock : MonoBehaviour {
+public class SignalTrace {
 
-	public RectTransform hundredsHand;
-    public RectTransform lowTensHand;
-    public RectTransform highTensHand;
+    public float strength = 0;
+    public bool hasBlink {
+        get {
+            bool res = _hasBlink;
+            _hasBlink = false;
+            return res;
+        }
+        set {
+            _hasBlink = value;
+        }
+    }
+    private bool _hasBlink = false;
+    public PingDirection lastDirection = PingDirection.Surrounding;
 
-    [HideInInspector]
-    public float value = 0;
-    [HideInInspector]
-    public float errorValue = 0;
-
-    private ClockHand hundredsClockHand;
-    private ClockHand lowTensClockHand;
-    private ClockHand highTensClockHand;
-
-    // Start is called before the first frame update
-    void Awake() {
-        hundredsClockHand = new ClockHand(hundredsHand, 360);
-        lowTensClockHand = new ClockHand(lowTensHand, 100);
-        highTensClockHand = new ClockHand(highTensHand, 100);
+    public void ApplyPing(PingDirection direction, PingStrength strength) {
+        if (strength != PingStrength.Silent) {
+            this.lastDirection = direction;
+            _hasBlink = true;
+            switch(strength) {
+                case PingStrength.Weak:
+                default:
+                    this.strength = 0.5f;
+                    break;
+                case PingStrength.Good:
+                    this.strength = 0.75f;
+                    break;
+                case PingStrength.Strong:
+                    this.strength = 1f;
+                    break;
+            }
+        }
     }
 
-    // Update is called once per frame
-    void Update() {
-        hundredsClockHand.value = value;
-        lowTensClockHand.value = Mathf.Repeat(value - (errorValue / 2f), 100f);
-        highTensClockHand.value = Mathf.Repeat(value + (errorValue / 2f), 100f);
-        hundredsClockHand.Clk(Time.deltaTime);
-        lowTensClockHand.Clk(Time.deltaTime);
-        highTensClockHand.Clk(Time.deltaTime);
+    public void Clk(float dt) {
+        strength = Mathf.MoveTowards(strength, 0, dt / 10f);
+        _hasBlink |= (Random.Range(0, 100) < 4);
     }
 }
