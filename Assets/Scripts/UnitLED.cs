@@ -46,7 +46,7 @@ public class UnitLED : MonoBehaviour {
         flash = Mathf.MoveTowards(flash, 0, Time.deltaTime * 8);
         brightness = Mathf.MoveTowards(brightness, 0, Time.deltaTime / 3f);
         float curvedFlash = flash * 1.5f;
-        float totalBrightness = Mathf.Clamp01(Mathf.Max(curvedFlash, brightness));
+        float totalBrightness = Mathf.Clamp01(Mathf.Max(curvedFlash, brightness) * 1.5f);
         led.color = Color.HSVToRGB(hue, 1f, (totalBrightness * 0.9f) + 0.1f);
     }
 

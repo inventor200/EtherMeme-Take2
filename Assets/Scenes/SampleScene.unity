@@ -270,6 +270,7 @@ MonoBehaviour:
     mapAlpha: 0
     vignetteFactor: 0.85
     diagramYOffset: -104
+    flowVisibility: 0
   - name: Standard Depth
     minAltitude: 0.9
     mainAltitude: 1
@@ -295,6 +296,7 @@ MonoBehaviour:
     mapAlpha: 1
     vignetteFactor: 0.55
     diagramYOffset: -64
+    flowVisibility: 1
   - name: Ascending
     minAltitude: 1.1
     mainAltitude: 1.75
@@ -320,6 +322,7 @@ MonoBehaviour:
     mapAlpha: 1
     vignetteFactor: 0.85
     diagramYOffset: -48
+    flowVisibility: 1
   - name: Ascended
     minAltitude: 1.9
     mainAltitude: 2
@@ -345,6 +348,7 @@ MonoBehaviour:
     mapAlpha: 1
     vignetteFactor: 0.35
     diagramYOffset: -24
+    flowVisibility: 0
   - name: Entering
     minAltitude: 1.9
     mainAltitude: 3
@@ -370,6 +374,7 @@ MonoBehaviour:
     mapAlpha: 0
     vignetteFactor: 0.35
     diagramYOffset: 0
+    flowVisibility: 0
 --- !u!4 &175017677
 Transform:
   m_ObjectHideFlags: 0
@@ -383,7 +388,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1440780991}
-  m_RootOrder: 3
+  m_RootOrder: 4
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &227307044
 GameObject:
@@ -1859,7 +1864,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1440780991}
-  m_RootOrder: 2
+  m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &747950272
 GameObject:
@@ -1958,48 +1963,6 @@ MonoBehaviour:
   playerDot: {fileID: 859054876}
   playerLabelLeft: {fileID: 1079257228}
   playerLabelRight: {fileID: 759291967}
-  altitudeToDepth:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: -104
-      inSlope: 1
-      outSlope: 0.48783037
-      tangentMode: 5
-      weightedMode: 2
-      inWeight: 0
-      outWeight: 0.92089725
-    - serializedVersion: 3
-      time: 1
-      value: -64
-      inSlope: 0.70895237
-      outSlope: -0.634326
-      tangentMode: 1
-      weightedMode: 3
-      inWeight: 0.3412043
-      outWeight: 0.38134587
-    - serializedVersion: 3
-      time: 2
-      value: -24
-      inSlope: -0.5918638
-      outSlope: 1.817107
-      tangentMode: 1
-      weightedMode: 3
-      inWeight: 0.3211335
-      outWeight: 0.35183
-    - serializedVersion: 3
-      time: 3
-      value: 0
-      inSlope: 24
-      outSlope: 1
-      tangentMode: 69
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
   instabilityWarning: {fileID: 964536487}
   hackerWarning: {fileID: 62234098}
   instabilityLevel: 0
@@ -3228,48 +3191,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   sideLength: 100
-  altitudeAlpha:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 0
-      inSlope: 0.1
-      outSlope: 0.05
-      tangentMode: 69
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0.33333334
-    - serializedVersion: 3
-      time: 1
-      value: 0.05
-      inSlope: 0.05
-      outSlope: 0.2
-      tangentMode: 69
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0.33333334
-    - serializedVersion: 3
-      time: 2
-      value: 0.25
-      inSlope: 0.2
-      outSlope: -0.25
-      tangentMode: 69
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0.33333334
-    - serializedVersion: 3
-      time: 3
-      value: 0
-      inSlope: -0.25
-      outSlope: 1.9
-      tangentMode: 69
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
 --- !u!1 &1184407488
 GameObject:
   m_ObjectHideFlags: 0
@@ -4223,7 +4144,7 @@ GameObject:
   - component: {fileID: 1408254022}
   m_Layer: 10
   m_Name: Ship
-  m_TagString: EtherShip
+  m_TagString: EtherAgent
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -4244,7 +4165,7 @@ Transform:
   - {fileID: 264491556}
   - {fileID: 1628000690}
   m_Father: {fileID: 1440780991}
-  m_RootOrder: 1
+  m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!58 &1408254022
 CircleCollider2D:
@@ -4336,6 +4257,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1139073620}
+  - {fileID: 1838322379}
   - {fileID: 1408254021}
   - {fileID: 672323966}
   - {fileID: 175017677}
@@ -5488,6 +5410,37 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1805156402}
   m_CullTransparentMesh: 1
+--- !u!1 &1838322378
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1838322379}
+  m_Layer: 0
+  m_Name: Tide Flow Transform
+  m_TagString: TideFlowTransform
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1838322379
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1838322378}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 4, y: 4, z: 4}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1440780991}
+  m_RootOrder: 1
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1991488174
 GameObject:
   m_ObjectHideFlags: 0

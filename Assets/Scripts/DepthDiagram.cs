@@ -32,7 +32,6 @@ public class DepthDiagram : MonoBehaviour {
 	public Image playerDot;
     public RectTransform playerLabelLeft;
     public RectTransform playerLabelRight;
-    public AnimationCurve altitudeToDepth;
     public Image instabilityWarning;
     public Image hackerWarning;
 

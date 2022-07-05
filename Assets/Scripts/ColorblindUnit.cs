@@ -44,7 +44,6 @@ public class ColorblindUnit : MonoBehaviour {
     public UnitLED level;
     public UnitLED below;
     public Image compassDot;
-    public TMPro.TextMeshProUGUI[] labels;
 
     private EtherSampler etherSampler;
     private float[] hues;
@@ -66,9 +65,6 @@ public class ColorblindUnit : MonoBehaviour {
         above.hue = hue;
         level.hue = hue;
         below.hue = hue;
-        for (int i = 0; i < labels.Length; i++) {
-            labels[i].color = Color.HSVToRGB(hue, 1f, 0.75f);
-        }
     }
 
     // Update is called once per frame

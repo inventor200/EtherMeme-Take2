@@ -61,6 +61,6 @@ public class SignalTrace {
 
     public void Clk(float dt) {
         strength = Mathf.MoveTowards(strength, 0, dt / 10f);
-        _hasBlink |= (Random.Range(0, 100) < 4);
+        _hasBlink |= (Random.Range(0, 100) < 4); //FIXME: It's bad practice to do random on every frame in a release version
     }
 }

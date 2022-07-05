@@ -28,6 +28,8 @@ using UnityEngine;
 
 public class EtherSampler : MonoBehaviour {
 
+    public static float GREATER_TIDE_STRENGTH = 200;
+
     public Transform playerTransform;
 	public Transform tidePrefab;
     public Camera etherCam;
@@ -144,7 +146,9 @@ public class EtherSampler : MonoBehaviour {
 
     void FixedUpdate() {
         float greaterTideAngle = Mathf.PerlinNoise(greaterTideSeed.x + (Time.fixedTime / 32f), greaterTideSeed.y) * Mathf.PI * 2;
-        float greaterTideHeave = Mathf.PerlinNoise(greaterTideSeed.y + Time.fixedTime, greaterTideSeed.x) * 200f;
+        float basicHeave = Mathf.PerlinNoise(greaterTideSeed.y + (Time.fixedTime / 16f), greaterTideSeed.x);
+        float minHeave = 0.2f;
+        float greaterTideHeave = ((basicHeave * (1f - minHeave)) + minHeave) * GREATER_TIDE_STRENGTH;
         float greaterTideX = Mathf.Cos(greaterTideAngle);
         float greaterTideY = Mathf.Sin(greaterTideAngle);
         greaterTideDirection = new Vector2(greaterTideX, greaterTideY) * greaterTideHeave;
@@ -152,15 +156,6 @@ public class EtherSampler : MonoBehaviour {
         // Do boids
         // We're avoiding operations that affect garbage collection as much as possible
         TideMode tideMode = playerShip.altitudeProfile.tideMode;
-        /*if (playerShip.currentAltitude >= 1.9f) {
-            tideMode = 2;
-        }
-        else if (playerShip.isBuried) {
-            tideMode = 0;
-        }
-        else {
-            tideMode = 1;
-        }*/
 
         tideEngine.Setup(tideMode != TideMode.Standard);
         for (int i = 0; i < startingTideCount; i++) {

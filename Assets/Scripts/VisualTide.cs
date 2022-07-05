@@ -47,7 +47,7 @@ public class VisualTide : MonoBehaviour {
 
 	private SpriteRenderer rend;
     private EtherSampler etherSampler;
-    private float standardValue;
+    private Transform tideFlowTransform;
     private Vector2 perlinSeed;
     private float teleportCooldown = 0;
     private PingChannel[] channels;
@@ -60,12 +60,12 @@ public class VisualTide : MonoBehaviour {
     void Awake() {
         ResetSparkles();
         casualSparkleTimer *= Random.Range(0f, 1f);
-        standardValue = Random.Range(0.25f, 0.5f);
         perlinSeed = Random.insideUnitCircle * 1000;
         rend = GetComponent<SpriteRenderer>();
-        rend.color = Color.HSVToRGB(0f, 0f, standardValue);
+        rend.color = Color.black;
         channels = new PingChannel[(int)PingChannelID.Count];
         etherSampler = GameObject.FindGameObjectWithTag("EtherSampler").GetComponent<EtherSampler>();
+        tideFlowTransform = GameObject.FindGameObjectWithTag("TideFlowTransform").transform;
         for (int i = 0; i < channels.Length; i++) {
             int colorIndex = i / 2;
             Color sampledColor;
@@ -110,6 +110,17 @@ public class VisualTide : MonoBehaviour {
         }
 
         pingHue /= totalHue;
+
+        float flowVisibility = etherSampler.playerShip.altitudeProfile.flowVisibility;
+        float greaterTideHeave = etherSampler.greaterTideDirection.magnitude;
+        Vector2 positionRelativeToGreaterTide = (Vector2)tideFlowTransform.InverseTransformPoint(transform.position);
+        float yFactor = Mathf.Sin(positionRelativeToGreaterTide.y * Mathf.PI * 2) / 4f;
+        float xFactor = (positionRelativeToGreaterTide.x + yFactor) * Mathf.PI * 2;
+        float minFlow = 0.35f;
+        float flowIntensity = Mathf.Clamp01(((greaterTideHeave / EtherSampler.GREATER_TIDE_STRENGTH) - minFlow)) / (1f - minFlow);
+        float flowFactor = Mathf.Sin(xFactor) * flowIntensity * flowVisibility;
+        float minValue = 0.5f;
+        float standardValue = (flowFactor + minValue + (flowVisibility * (1f - minValue))) / 2f;
 
         float masterValue = Mathf.Clamp01((standardValue * delta) + (pingValue * 0.75f));
         glowVolume = masterValue;
@@ -184,7 +195,7 @@ public class VisualTide : MonoBehaviour {
     }
 
     void OnCollisionEnter2D(Collision2D col) {
-        if (col.transform.tag == "EtherShip") {
+        if (col.transform.tag == "EtherAgent") {
             EtherAgent etherAgent = col.gameObject.GetComponent<EtherAgent>();
             if (etherAgent != null) {
                 if (etherAgent.currentSpeed == ShipSpeed.Cruise) {
@@ -193,53 +204,6 @@ public class VisualTide : MonoBehaviour {
                 else if (etherAgent.currentSpeed == ShipSpeed.AheadFull) {
                     Ping(0, PingChannelID.Predator_WasSeen);
                 }
-            }
-        }
-    }
-}
-
-public class PingChannel {
-
-    public PingChannelID id { private set; get; }
-    public bool askChannel { private set; get; }
-    public float strength {
-        get {
-            float pingAmount = Mathf.Clamp01(1f - Mathf.Abs(_strength - 1f));
-            return pingAmount * pingAmount;
-        }
-    }
-    private float _strength;
-    private int sparkleStage;
-    public bool isSparkly {
-        get {
-            return sparkleStage == 1;
-        }
-    }
-    public float hue { private set; get; }
-
-    public PingChannel(PingChannelID id, bool askChannel, float hue) {
-        this.id = id;
-        this.askChannel = askChannel;
-        this._strength = 0;
-        this.sparkleStage = 2;
-        this.hue = hue;
-    }
-
-    public void ResetPing() {
-        _strength = 0;
-        sparkleStage = 2;
-    }
-
-    public void Ping(float distanceOffset) {
-        _strength = 1f + distanceOffset;
-        sparkleStage = 0;
-    }
-
-    public void Sink(float dx) {
-        _strength = Mathf.Clamp(_strength - dx, 0, 8);
-        if (_strength <= 1f) {
-            if (sparkleStage < 2) {
-                sparkleStage++;
             }
         }
     }

@@ -54,6 +54,7 @@ public class EtherAltitude {
     public float mapAlpha;
     public float vignetteFactor;
     public float diagramYOffset;
+    public float flowVisibility;
 
     public static float Lerp(float higherAltitude, float levelAltitude, float lowerAltitude,
         float currentAltitude, float higherValue, float mainValue, float lowerValue) {
@@ -144,6 +145,12 @@ public class EtherAltitude {
             above.mainAltitude, level.mainAltitude, below.mainAltitude,
             currentAltitude,
             above.diagramYOffset, level.diagramYOffset, below.diagramYOffset
+        );
+
+        altitudeProfile.flowVisibility = Lerp(
+            above.mainAltitude, level.mainAltitude, below.mainAltitude,
+            currentAltitude,
+            above.flowVisibility, level.flowVisibility, below.flowVisibility
         );
 
         return level;
