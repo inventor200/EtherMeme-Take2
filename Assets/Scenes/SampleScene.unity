@@ -3927,10 +3927,11 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1362782838}
+  - component: {fileID: 1362782841}
   - component: {fileID: 1362782840}
   - component: {fileID: 1362782839}
   m_Layer: 8
-  m_Name: Top Down
+  m_Name: Map Display
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3995,6 +3996,22 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1362782837}
   m_CullTransparentMesh: 1
+--- !u!114 &1362782841
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1362782837}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 80248b7955baa08e6adb5435a8d8ad7a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  arrow: {fileID: 1628000690}
+  rootGrid: {fileID: 755871914}
+  standardGrid: {fileID: 2109744191}
+  ascendedGrid: {fileID: 893278906}
 --- !u!1 &1390039993
 GameObject:
   m_ObjectHideFlags: 0
@@ -4216,14 +4233,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 37e68d607777f19dd8c20016f5190b54, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  cruiseChannel: 0
   halo: {fileID: 264491557}
-  arrow: {fileID: 1628000690}
+  cruiseChannel: 0
   postProcessor: {fileID: 672323965}
   ambientSounds: {fileID: 1342238335}
-  rootGrid: {fileID: 755871914}
-  standardGrid: {fileID: 2109744191}
-  ascendedGrid: {fileID: 893278906}
+  mapDisplay: {fileID: 1362782841}
   xClock: {fileID: 1801905512}
   yClock: {fileID: 2018450527}
   depthDiagram: {fileID: 747950276}
@@ -4559,7 +4573,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Tide Echoes
+  m_text: Local tide cross-section
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 58ca9e63bc86db0259d0609e81b35843, type: 2}
   m_sharedMaterial: {fileID: -3970830544967021777, guid: 58ca9e63bc86db0259d0609e81b35843, type: 2}

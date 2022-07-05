@@ -39,37 +39,21 @@ public class ShipInEther : EtherAgent {
     public static KeyCode KEY_ASCEND = KeyCode.R;
     public static KeyCode KEY_DESCEND = KeyCode.F;
 
-	public SpriteRenderer halo;
-    public Transform arrow;
     public PostProcessVolume postProcessor;
     private Vignette vignette;
     [Space]
     public AmbientSounds ambientSounds;
-    public RectTransform rootGrid;
-    public TopDownGrid standardGrid;
-    public TopDownGrid ascendedGrid;
+    public MapDisplay mapDisplay;
     public CoordClock xClock;
     public CoordClock yClock;
     public DepthDiagram depthDiagram;
     public TerminalScreen terminalScreen;
-
-    private float pingHue = 0;
-    private float pingMagnitude = 0;
-    private float[] hues;
-
-    private float arrowSize = 1f;
 
     private bool hasLanded = false;
     private bool tetherStabilityBroken = false;
 
     void Awake() {
         AgentAwake();
-        hues = new float[] {
-            EtherSampler.GetHueFromColor(etherSampler.playerHue),
-            EtherSampler.GetHueFromColor(etherSampler.targetHue),
-            EtherSampler.GetHueFromColor(etherSampler.predatorHue),
-            EtherSampler.GetHueFromColor(etherSampler.freighterHue)
-        };
         postProcessor.profile.TryGetSettings<Vignette>(out vignette);
     }
 
@@ -80,13 +64,9 @@ public class ShipInEther : EtherAgent {
     }
 
     // Update is called once per frame
-    // TODO: Refactor this class into player ship, and map grid
     void Update() {
-        pingMagnitude = Mathf.Clamp01(pingMagnitude - (Time.deltaTime / 2f));
-        Color haloColor = Color.HSVToRGB(pingHue, 1f, pingMagnitude);
-        
         if (Input.GetKeyDown(KeyCode.Space) && hasLanded && altitudeProfile.allowControlInput && altitudeProfile.allowSonarPing) {
-            SendPing(PingChannelID.Player_WasSeen);
+            PingForPlayer();
         }
 
         ShipSpeed nextSpeed = ShipSpeed.Halted;
@@ -98,9 +78,6 @@ public class ShipInEther : EtherAgent {
             if (Input.GetKeyDown(KEY_STEALTH) && hasLanded) {
                 nextSpeed = ShipSpeed.Halted;
             }
-
-            float blendInColor = 0.15f;
-            haloColor = new Color(blendInColor, blendInColor, blendInColor, 1f);
         }
         else if (hasLanded && altitudeProfile.allowControlInput) {
             if (Input.GetKey(KEY_NORTH)) {
@@ -149,25 +126,7 @@ public class ShipInEther : EtherAgent {
 
         ambientSounds.engineOn = currentSpeed != ShipSpeed.Stealth;
 
-        if ((int)currentSpeed > (int)ShipSpeed.Halted) {
-            float nextAngle = Mathf.Atan2(currentDirection.y, currentDirection.x) * Mathf.Rad2Deg;
-            float currentAngle = arrow.localRotation.eulerAngles.z;
-
-            arrow.localRotation = Quaternion.Euler(0, 0, Mathf.MoveTowardsAngle(currentAngle, nextAngle, 360f * Time.deltaTime));
-        }
-
-        // Adjust visual grid
-        float totalAltitudeScale = altitudeProfile.mapScale;
-        rootGrid.localScale = new Vector3(totalAltitudeScale, totalAltitudeScale, totalAltitudeScale);
-        standardGrid.AdjustTo(expectedPosition, currentAltitude, etherSampler.cameraScale);
-        ascendedGrid.AdjustTo(expectedPosition, currentAltitude, etherSampler.cameraScale);
-
-        // Adjust arrow
-        float nextSize = currentSpeed == ShipSpeed.Stealth ? 0f : 1f;
-        arrowSize = Mathf.Lerp(arrowSize, nextSize, 5 * Time.deltaTime);
-        arrow.localScale = new Vector3(arrowSize, arrowSize, arrowSize);
-        halo.transform.localScale = new Vector3(1 + arrowSize, 1 + arrowSize, 1 + arrowSize);
-        halo.color = haloColor;
+        mapDisplay.UpdateMap(currentSpeed, currentDirection, altitudeProfile.mapScale, expectedPosition, currentAltitude);
 
         // Sounds get higher with speed
         ambientSounds.velocityMix = speedScale;
@@ -175,11 +134,14 @@ public class ShipInEther : EtherAgent {
         // Control vignette intensity with altitude
         vignette.intensity.value = altitudeProfile.vignetteFactor;
 
+        // Update expected positions on coordinate clocks
         xClock.value = expectedPosition.x;
         xClock.errorValue = expectedError;
         yClock.value = expectedPosition.y;
         yClock.errorValue = expectedError;
 
+        // Extra intro diving messages, timed against WIP diving sound
+        // TODO: Separate the sound out into stems, for easier re-timing and pause compatibility
         if (!hasLanded) {
             if (currentAltitude <= 2.25f && !tetherStabilityBroken) {
                 terminalScreen.WriteErrorLine("Tether stability system: 10s left");
@@ -222,7 +184,5 @@ public class ShipInEther : EtherAgent {
     
     protected override void HandlePingEffect(PingChannelID id) {
         ambientSounds.pingSound.Play();
-        pingMagnitude = 1f;
-        pingHue = hues[(int)id / 2];
     }
 }

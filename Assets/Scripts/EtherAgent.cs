@@ -40,6 +40,7 @@ public class EtherAgent : MonoBehaviour {
     protected static float ERROR_PER_SEC_STEALTH_STANDARD = 0.738f;
     protected static float ERROR_PER_SEC_BURIED = 0.000042f;
 
+	public SpriteRenderer halo;
     public PingChannelID cruiseChannel;
     public float currentAltitude { private set; get; }
     protected int goalAltitudeIndex = 1;
@@ -56,6 +57,10 @@ public class EtherAgent : MonoBehaviour {
     private bool wasInteractingWithTides;
     protected bool signalAvailabilityChanged { private set; get; }
     protected bool isMovingIntoStandard { private set; get; }
+    protected float[] hues { private set; get; }
+    private float haloSize = 2f;
+    private float pingHue = 0;
+    private float pingMagnitude = 0;
 
     protected void AgentAwake() {
         etherSampler = GameObject.FindGameObjectWithTag("EtherSampler").GetComponent<EtherSampler>();
@@ -63,6 +68,12 @@ public class EtherAgent : MonoBehaviour {
         altitudeProfile = new EtherAltitude();
         currentAltitude = etherSampler.altitudes[etherSampler.altitudes.Length - 1].mainAltitude;
         altitudeBucket = EtherAltitude.UpdateAltitudeProfileAndGetBucket(currentAltitude, altitudeProfile, etherSampler.altitudes);
+        hues = new float[] {
+            EtherSampler.GetHueFromColor(etherSampler.playerHue),
+            EtherSampler.GetHueFromColor(etherSampler.targetHue),
+            EtherSampler.GetHueFromColor(etherSampler.predatorHue),
+            EtherSampler.GetHueFromColor(etherSampler.freighterHue)
+        };
     }
 
     protected void AgentStart() {
@@ -70,6 +81,21 @@ public class EtherAgent : MonoBehaviour {
     }
 
     protected void AgentUpdate(ShipSpeed nextSpeed, Vector2 nextDirection) {
+        // Adjust halo
+        pingMagnitude = Mathf.Clamp01(pingMagnitude - (Time.deltaTime / 2f));
+        Color haloColor = Color.HSVToRGB(pingHue, 1f, pingMagnitude);
+        if (currentSpeed == ShipSpeed.Stealth) {
+            float blendInColor = 0.15f;
+            haloColor = new Color(blendInColor, blendInColor, blendInColor, 1f);
+        }
+
+        float nextSize = currentSpeed == ShipSpeed.Stealth ? 1f : 2f;
+        haloSize = Mathf.Lerp(haloSize, nextSize, 5 * Time.deltaTime);
+        halo.transform.localScale = new Vector3(haloSize, haloSize, haloSize);
+
+        halo.color = haloColor;
+
+        // Handle altitude changes
         bool didHaveSignal = altitudeProfile.hasTetherSignal;
         float goalAltitude = etherSampler.altitudes[goalAltitudeIndex].mainAltitude;
         currentAltitude = Mathf.MoveTowards(currentAltitude, goalAltitude, Time.deltaTime / DEPTH_CHANGE_TIME);
@@ -84,6 +110,7 @@ public class EtherAgent : MonoBehaviour {
         currentSpeed = nextSpeed;
         currentDirection = nextDirection;
 
+        // Handle speed and movement knowledge
         speedScale = 0;
         float expectedSpeed = 0;
 
@@ -176,8 +203,29 @@ public class EtherAgent : MonoBehaviour {
         //
     }
 
-    protected void SendPing(PingChannelID id) {
+    protected void PingForPlayer() {
+        SendPing(PingChannelID.Player_WasSeen);
+    }
+
+    protected void PingForTarget() {
+        SendPing(PingChannelID.Target_WasSeen);
+    }
+
+    protected void PingForPredator() {
+        SendPing(PingChannelID.Predator_WasSeen);
+    }
+
+    protected void PingForFreighter() {
+        SendPing(PingChannelID.Freighter_WasSeen);
+    }
+
+    private void SendPing(PingChannelID id) {
+        if (id == cruiseChannel) {
+            id++; // An agent will never ask about itself, but rather ask if anyone else has.
+        }
         HandlePingEffect(id);
+        pingMagnitude = 1f;
+        pingHue = hues[(int)id / 2];
         etherSampler.RequestPing(id);
     }
 
