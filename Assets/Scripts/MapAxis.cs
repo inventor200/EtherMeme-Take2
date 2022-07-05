@@ -53,7 +53,7 @@ public class MapAxis : MonoBehaviour {
         bool needsNegative = position > 400;
         positiveLabel.enabled = !needsNegative;
         negativeLabel.enabled = needsNegative;
-        string label = "" + Mathf.RoundToInt(value);
+        string label = "" + Mathf.RoundToInt(value) + "\u00b0";
         if (needsNegative) {
             negativeLabel.text = label;
         }
