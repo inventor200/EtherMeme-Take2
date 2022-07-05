@@ -32,6 +32,8 @@ public class MapDisplay : MonoBehaviour {
     public RectTransform rootGrid;
     public TopDownGrid standardGrid;
     public TopDownGrid ascendedGrid;
+    public MapAxis xAxis;
+    public MapAxis yAxis;
     private float arrowSize = 1f;
     private EtherSampler etherSampler;
 
@@ -56,5 +58,17 @@ public class MapDisplay : MonoBehaviour {
         float nextSize = currentSpeed == ShipSpeed.Stealth ? 0f : 1f;
         arrowSize = Mathf.Lerp(arrowSize, nextSize, 5 * Time.deltaTime);
         arrow.localScale = new Vector3(arrowSize, arrowSize, arrowSize);
+
+        float mapScale = etherSampler.playerShip.altitudeProfile.mapScale;
+        xAxis.mapWidth = 10f / mapScale;
+        yAxis.mapWidth = 10f / mapScale;
+
+        float increment = mapScale > 0.15f ? 10 : 60;
+        xAxis.SetAxis(GetIncrement(expectedPosition.x, increment), expectedPosition);
+        yAxis.SetAxis(GetIncrement(expectedPosition.y, increment), expectedPosition);
+    }
+
+    private static float GetIncrement(float value, float increment) {
+        return Mathf.Round(value / increment) * increment;
     }
 }

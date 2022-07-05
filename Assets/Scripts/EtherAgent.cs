@@ -28,7 +28,7 @@ using UnityEngine;
 
 public class EtherAgent : MonoBehaviour {
 
-    protected static float DEPTH_CHANGE_TIME = 10f;
+    protected static float DEPTH_CHANGE_TIME = 6f;
 
     // Force, avg m/s, avg error per meter
     protected static float[][] SPEED_MODES = new float [][] {

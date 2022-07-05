@@ -143,13 +143,13 @@ public class ShipInEther : EtherAgent {
         // Extra intro diving messages, timed against WIP diving sound
         // TODO: Separate the sound out into stems, for easier re-timing and pause compatibility
         if (!hasLanded) {
-            if (currentAltitude <= 2.25f && !tetherStabilityBroken) {
-                terminalScreen.WriteErrorLine("Tether stability system: 10s left");
+            if (currentAltitude <= 2f && !tetherStabilityBroken) {
+                terminalScreen.WriteErrorLine("Tether stability system near limit!");
                 tetherStabilityBroken = true;
             }
             else if (altitudeProfile.allowSonarPing) {
                 hasLanded = true;
-                terminalScreen.WriteWarningLine("Tether signal lost");
+                terminalScreen.WriteWarningLine("Tether stability system disconnected");
             }
         }
 
