@@ -91,9 +91,6 @@ public class EtherAgent : MonoBehaviour {
     }
 
     protected void AgentUpdate(ShipSpeed nextSpeed, Vector2 nextDirection) {
-        //TODO: If skipsPhysics is true, hide this object visually when the player is at a different altitude,
-        //      or if the player is in an ascended layer
-
         // Handle altitude changes
         bool didHaveSignal = altitudeProfile.hasTetherSignal;
         float goalAltitude = etherSampler.altitudes[goalAltitudeIndex].mainAltitude;
@@ -178,6 +175,11 @@ public class EtherAgent : MonoBehaviour {
     }
 
     protected void AgentFixedUpdate() {
+        //TODO: Impart footprint trace on a sample area when moving
+        //TODO: Affect mood of sample area while moving, based on speed
+        // These would be best-done by caching the total net affect, and then the cache
+        // will be read and applied when pings are handled for this agent.
+
         if (wasInteractingWithTides != altitudeProfile.allowTideInteraction && !skipsPhysics) {
             wasInteractingWithTides = altitudeProfile.allowTideInteraction;
             gameObject.layer = LayerMask.NameToLayer(altitudeProfile.allowTideInteraction ? "Standard" : "NonStandard");

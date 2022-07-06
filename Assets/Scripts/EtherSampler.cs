@@ -79,7 +79,7 @@ public class EtherSampler : MonoBehaviour {
     private float agentTimer = 0;
     private int agentIndex = 0;
 
-    void Awake() {
+    void Awake() { //TODO: Create a debug UI screen for reading samples and any cell around the map
         store = new EtherStore(36);
         playerShip = playerTransform.GetComponent<ShipInEther>();
         sampleArea = new EtherCell[3, 3];
@@ -288,7 +288,7 @@ public class EtherSampler : MonoBehaviour {
     }
 
     public void RequestPing(EtherAgent agent, PingChannelID id) {
-        //TODO: Calculate ping responses from environment
+        //TODO: Calculate ping responses from footprint trace of sample area
         ApplyPing(agent, PingDirection.East, PingStrength.Strong, id);
     }
 
