@@ -32,6 +32,8 @@ public class UnitLED : MonoBehaviour {
 	private Image led;
     [HideInInspector]
     public float hue;
+    [HideInInspector]
+    public bool buriedMode = false;
 
     private float flash;
     private float brightness;
@@ -46,7 +48,8 @@ public class UnitLED : MonoBehaviour {
         flash = Mathf.MoveTowards(flash, 0, Time.deltaTime * 8);
         brightness = Mathf.MoveTowards(brightness, 0, Time.deltaTime / 3f);
         float curvedFlash = flash * 1.5f;
-        float totalBrightness = Mathf.Clamp01(Mathf.Max(curvedFlash, brightness) * 1.5f);
+        // When buried, only the strongest signals get through, and the dropoff is faster
+        float totalBrightness = Mathf.Clamp01((Mathf.Max(curvedFlash, brightness) * 1.5f) + (buriedMode ? -0.85f : 0f));
         led.color = Color.HSVToRGB(hue, 1f, (totalBrightness * 0.9f) + 0.1f);
     }
 

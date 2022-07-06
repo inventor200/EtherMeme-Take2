@@ -261,6 +261,7 @@ MonoBehaviour:
     allowControlInput: 1
     hasExclusiveEntry: 0
     renderNPCs: 0
+    collectsSamples: 1
     tideMode: 2
     cloudAlpha: 0
     tideAlpha: 1
@@ -286,6 +287,7 @@ MonoBehaviour:
     allowControlInput: 1
     hasExclusiveEntry: 0
     renderNPCs: 1
+    collectsSamples: 1
     tideMode: 0
     cloudAlpha: 0.05
     tideAlpha: 1
@@ -311,6 +313,7 @@ MonoBehaviour:
     allowControlInput: 1
     hasExclusiveEntry: 0
     renderNPCs: 0
+    collectsSamples: 0
     tideMode: 0
     cloudAlpha: 0.05
     tideAlpha: 0
@@ -336,6 +339,7 @@ MonoBehaviour:
     allowControlInput: 1
     hasExclusiveEntry: 0
     renderNPCs: 0
+    collectsSamples: 1
     tideMode: 1
     cloudAlpha: 0.25
     tideAlpha: 0
@@ -361,6 +365,7 @@ MonoBehaviour:
     allowControlInput: 0
     hasExclusiveEntry: 1
     renderNPCs: 0
+    collectsSamples: 0
     tideMode: 1
     cloudAlpha: 0
     tideAlpha: 0

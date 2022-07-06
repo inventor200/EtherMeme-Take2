@@ -44,6 +44,7 @@ public class SignalTrace {
         }
     }
     private bool _hasBlink = false;
+    private float blinkTimer = -1;
     public PingDirection lastDirection = PingDirection.Surrounding;
 
     public void ApplyPing(PingDirection direction, PingStrength strength, float mixFactor) {
@@ -68,13 +69,17 @@ public class SignalTrace {
     }
 
     public void Clk(float dt) {
+        blinkTimer -= dt;
+        if (blinkTimer <= 0) {
+            blinkTimer = Random.Range(0.1f, 0.75f);
+            _hasBlink = true;
+        }
         strength = Mathf.MoveTowards(strength, 0, dt / 10f);
-        _hasBlink |= (Random.Range(0, 100) < 4); //FIXME: It's bad practice to do random on every frame in a release version
     }
 
     public void CopyTo(SignalTrace other) {
         other.strength = this.strength;
-        other._hasBlink = this._hasBlink;
+        //other._hasBlink = this._hasBlink;
         other.lastDirection = this.lastDirection;
     }
 
@@ -82,15 +87,15 @@ public class SignalTrace {
         this.lastDirection = sampleArea[1, 1].lastDirection;
 
         float totalStrength = 0;
-        float totalBlink = 0;
+        //float totalBlink = 0;
         for (int y = 0; y < 3; y++) {
             for (int x = 0; x < 3; x++) {
                 totalStrength += sampleArea[x, y].strength * mixAmounts[x, y];
-                totalBlink += sampleArea[x, y]._hasBlink ? mixAmounts[x, y] : 0f;
+                //totalBlink += sampleArea[x, y]._hasBlink ? mixAmounts[x, y] : 0f;
             }
         }
 
         this.strength = totalStrength / totalMixAmount;
-        this._hasBlink = totalBlink / totalMixAmount > 0.5f;
+        //this._hasBlink = totalBlink / totalMixAmount > 0.5f;
     }
 }

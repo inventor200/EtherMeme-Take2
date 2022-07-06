@@ -42,7 +42,6 @@ public class ColorblindUnit : MonoBehaviour {
     [Space]
     public UnitLED above;
     public UnitLED level;
-    public UnitLED below;
     public Image compassDot;
 
     private EtherSampler etherSampler;
@@ -64,24 +63,23 @@ public class ColorblindUnit : MonoBehaviour {
         compassDot.color = Color.HSVToRGB(hue, 1f, 1f);
         above.hue = hue;
         level.hue = hue;
-        below.hue = hue;
     }
 
     // Update is called once per frame
     void Update() {
-        //int id = (int)channelID / 2;
         SignalTrace seenTrace = etherSampler.playerShip.sampleCell.channelSignals[(int)channelID];
         SignalTrace askTrace = etherSampler.playerShip.sampleCell.channelSignals[(int)channelID + 1];
         SignalTrace levelTrace = SignalTrace.zero;
-        if (etherSampler.playerShip.altitudeProfile.hasBurialHazard) {
+
+        bool isPlayerBuried = etherSampler.playerShip.altitudeProfile.hasBurialHazard;
+        above.buriedMode = isPlayerBuried;
+        if (isPlayerBuried) {
             ClkLED(seenTrace, askTrace, above);
         }
         else {
             ClkLED(seenTrace, askTrace, level);
             levelTrace = seenTrace.strength > askTrace.strength ? seenTrace : askTrace;
         }
-        
-        //ClkLED(seenTrace, askTrace, below); //FIXME: Figure out how we want to handle signals from below, if at all
 
         float angle;
         float angleNoise = 120;

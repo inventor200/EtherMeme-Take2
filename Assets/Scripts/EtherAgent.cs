@@ -63,6 +63,8 @@ public class EtherAgent : MonoBehaviour {
     //protected bool isMovingIntoStandard { private set; get; }
     protected float[] hues { private set; get; }
     private float haloSize = 2f;
+    [HideInInspector]
+    public Queue<SonarPing> pingRequests;
     private float pingHue = 0;
     private float pingMagnitude = 0;
 
@@ -80,6 +82,7 @@ public class EtherAgent : MonoBehaviour {
         };
         sampleCell = new EtherCell(0, 0);
         etherSampler.agents.Add(this);
+        pingRequests = new Queue<SonarPing>();
     }
 
     protected void AgentStart() {
@@ -132,6 +135,8 @@ public class EtherAgent : MonoBehaviour {
             Mathf.Repeat(expectedPosition.x, 360f),
             Mathf.Repeat(expectedPosition.y, 360f)
         );
+
+        sampleCell.Clk(Time.deltaTime); // Fake updates between 20FPS sampler updates
 
         // Decide rendering
         allowDrawing = skipsPhysics ? (

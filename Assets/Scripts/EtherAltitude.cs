@@ -45,6 +45,7 @@ public class EtherAltitude {
     public bool allowControlInput;
     public bool hasExclusiveEntry;
     public bool renderNPCs;
+    public bool collectsSamples;
     public TideMode tideMode;
     public float cloudAlpha;
     public float tideAlpha;
@@ -100,6 +101,7 @@ public class EtherAltitude {
         altitudeProfile.allowControlInput = level.allowControlInput;
         altitudeProfile.hasExclusiveEntry = level.hasExclusiveEntry;
         altitudeProfile.renderNPCs = level.renderNPCs;
+        altitudeProfile.collectsSamples = level.collectsSamples;
 
         altitudeProfile.tideMode = level.tideMode;
 

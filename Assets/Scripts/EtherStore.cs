@@ -117,6 +117,11 @@ public class EtherCell {
             }
         }
 
+        if (totalMixAmount < float.Epsilon) {
+            Debug.LogError("Total mix amount for sample is zero!");
+            return;
+        }
+
         for (int i = 0; i < footprints.Length; i++) {
             float totalStrength = 0;
             for (int y = 0; y < 3; y++) {

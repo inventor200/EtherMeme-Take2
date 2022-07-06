@@ -75,8 +75,9 @@ public class EtherSampler : MonoBehaviour {
     private VisualTide[] cmArray;
     // For sorting
     private SonarSortable[,] srArray;
-    private Queue<SonarPing> pingRequests;
     private bool pingRequiresSort = true;
+    private float agentTimer = 0;
+    private int agentIndex = 0;
 
     void Awake() {
         store = new EtherStore(36);
@@ -93,7 +94,6 @@ public class EtherSampler : MonoBehaviour {
         riArray = new Rigidbody2D[startingTideCount];
         cmArray = new VisualTide[startingTideCount];
         srArray = new SonarSortable[(int)PingDirection.Count,startingTideCount];
-        pingRequests = new Queue<SonarPing>();
         float sampleRadius = sampleWidth / 2f;
         float minRadius = 0.5f;
         for (int i = 0; i < startingTideCount; i++) {
@@ -135,6 +135,17 @@ public class EtherSampler : MonoBehaviour {
         lastSparkleVolume = Mathf.Lerp(lastSparkleVolume, sparkleVolume, 8 * Time.deltaTime);
         ambientSounds.sparkleVolume = lastSparkleVolume * 0.25f;
 
+        // Update 20 FPS agent handler
+        bool handlingAgents = agentIndex < agents.Count;
+        if (!handlingAgents) {
+            agentTimer += Time.deltaTime;
+            if (agentTimer >= 1f / 20f) { // Try handling agents
+                agentIndex = 0;
+                agentTimer = 0;
+                handlingAgents = agentIndex < agents.Count;
+            }
+        }
+
         // Update ascended cell
         for (int i = 0; i < agents.Count; i++) {
             EtherAgent agent = agents[i];
@@ -144,22 +155,26 @@ public class EtherSampler : MonoBehaviour {
         // Clk grid
         store.Clk(Time.deltaTime);
 
-        // Handle pings
-        pingRequiresSort = true;
-        while (pingRequests.Count > 0) {
-            PingForAngle(pingRequests.Dequeue());
-        }
+        if (handlingAgents) {
+            EtherAgent agent = agents[agentIndex];
 
-        // Clk agent samples
-        for (int i = 0; i < agents.Count; i++) {
-            EtherAgent agent = agents[i];
+            // Handle agent pings
+            pingRequiresSort = true;
+            while (agent.pingRequests.Count > 0) {
+                PingForAngle(agent, agent.pingRequests.Dequeue());
+            }
+
+            // Collect agent sensor sample
             if (agent.altitudeProfile.hasEasyListening) {
                 store.ascendedCell.CopyTo(agent.sampleCell);
             }
-            else {
+            else if (agent.altitudeProfile.collectsSamples) {
                 PrepareSample(agent.transform.position);
                 agent.sampleCell.CollectFromSample(sampleArea, traceArea, mixFactors);
             }
+
+            agentIndex++;
+            //Debug.Log("" + Time.frameCount + ": Handled agent " + agent.transform.name);
         }
     }
 
@@ -219,16 +234,18 @@ public class EtherSampler : MonoBehaviour {
     private void PrepareSample(Vector2 realPosition) {
         Vector2 gradientPos = GetGradientPosFromWorldPos(realPosition);
         Vector2Int cellPos = GetCellCoordFromGradientPos(gradientPos);
-        for (int y = cellPos.y - 1; y <= cellPos.y + 1; y++) {
-            for (int x = cellPos.x - 1; x <= cellPos.x + 1; x++) {
-                int x1 = GetSafeCellCoord(x);
-                int y1 = GetSafeCellCoord(y);
-                EtherCell selectedCell = store.cells[x1, y1];
+        for (int y = -1; y <= 1; y++) {
+            for (int x = -1; x <= 1; x++) {
+                int cellIndexX = GetSafeCellCoord(cellPos.x + x);
+                int cellIndexY = GetSafeCellCoord(cellPos.y + y);
+                EtherCell selectedCell = store.cells[cellIndexX, cellIndexY];
                 sampleArea[x + 1, y + 1] = selectedCell;
 
-                mixFactors[x + 1, y + 1] = 1f - Mathf.Clamp01(GetCoordGradientDelta(
-                    gradientPos, new Vector2Int(x, y)
-                ));
+                Vector2Int cellPosition = new Vector2Int(cellIndexX, cellIndexY);
+                float gradientDelta = GetCoordGradientDelta(
+                    gradientPos, cellPosition
+                );
+                mixFactors[x + 1, y + 1] = 1f - Mathf.Clamp01(gradientDelta);
             }
         }
     }
@@ -236,15 +253,15 @@ public class EtherSampler : MonoBehaviour {
     private float GetCoordGradientDelta(float fromGradientCoord, int toCellCoord) {
         // Get shortest delta position to cell
         return Mathf.Min(
-            (float)toCellCoord - fromGradientCoord,
-            ((float)toCellCoord + (float)store.sideLength) - fromGradientCoord,
-            ((float)toCellCoord - (float)store.sideLength) - fromGradientCoord
+            Mathf.Abs((float)toCellCoord - fromGradientCoord),
+            Mathf.Abs(((float)toCellCoord + (float)store.sideLength) - fromGradientCoord),
+            Mathf.Abs(((float)toCellCoord - (float)store.sideLength) - fromGradientCoord)
         );
     }
 
     private float GetCoordGradientDelta(Vector2 fromGradientPosition, Vector2Int toCellPosition) {
         float dx = GetCoordGradientDelta(fromGradientPosition.x, toCellPosition.x);
-        float dy = GetCoordGradientDelta(fromGradientPosition.x, toCellPosition.x);
+        float dy = GetCoordGradientDelta(fromGradientPosition.y, toCellPosition.y);
         return (new Vector2(dx, dy)).magnitude;
     }
 
@@ -266,20 +283,22 @@ public class EtherSampler : MonoBehaviour {
 
     private int GetSafeCellCoord(int coord) {
         while (coord >= store.sideLength) coord -= store.sideLength;
-        while (coord < store.sideLength) coord += store.sideLength;
+        while (coord < 0) coord += store.sideLength;
         return coord;
     }
 
     public void RequestPing(EtherAgent agent, PingChannelID id) {
         //TODO: Calculate ping responses from environment
-        ApplyPing(agent, PingDirection.East, PingStrength.Good, id);
+        ApplyPing(agent, PingDirection.East, PingStrength.Strong, id);
     }
 
     private void ApplyPing(EtherAgent agent, PingDirection direction, PingStrength strength, PingChannelID id) {
-        //TODO: Support pings from other agents, respecting location
-        //TODO: Do not visually handle pings outside of view distance
-        //TODO: Handle pings visually every 20 frames, handling 1 agent's ping per frame
-        pingRequests.Enqueue(new SonarPing(direction, strength, id));
+        //TODO: Confirm other agents can ping?
+
+        // Do not handle rendering of agents outside of view distance
+        if (Vector2.Distance(agent.transform.position, playerTransform.position) <= 25f) {
+            agent.pingRequests.Enqueue(new SonarPing(direction, strength, id));
+        }
         PrepareSample(agent.transform.position);
         for (int y = 0; y < 3; y++) {
             for (int x = 0; x < 3; x++) {
@@ -288,16 +307,16 @@ public class EtherSampler : MonoBehaviour {
         }
     }
 
-    private void PreparePings() {
+    private void PreparePings(EtherAgent agent) {
         // Cache direction and distance sorts for multiple possible pings
         // Also, avoid garbage collection while doing so
-        float playerX = playerTransform.position.x;
-        float playerY = playerTransform.position.y;
+        float agentX = agent.transform.position.x;
+        float agentY = agent.transform.position.y;
         for (int i = 0; i < startingTideCount; i++) {
             float tidePosX = trArray[i].position.x;
             float tidePosY = trArray[i].position.y;
-            float tideDirectionX = tidePosX - playerX;
-            float tideDirectionY = tidePosY - playerY;
+            float tideDirectionX = tidePosX - agentX;
+            float tideDirectionY = tidePosY - agentY;
             float cachedDist = Mathf.Sqrt(
                 (tideDirectionX * tideDirectionX) +
                 (tideDirectionY * tideDirectionY)
@@ -350,11 +369,11 @@ public class EtherSampler : MonoBehaviour {
         pingRequiresSort = false;
     }
 
-    private void PingForAngle(SonarPing pingRequest) {
+    private void PingForAngle(EtherAgent agent, SonarPing pingRequest) {
         if ((int)pingRequest.strength <= 0) return;
         
         if (pingRequiresSort) {
-            PreparePings();
+            PreparePings(agent);
         }
 
         int d = (int)pingRequest.direction;

@@ -66,7 +66,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Below
+  m_text: MAX
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 58ca9e63bc86db0259d0609e81b35843, type: 2}
   m_sharedMaterial: {fileID: -3970830544967021777, guid: 58ca9e63bc86db0259d0609e81b35843, type: 2}
@@ -265,6 +265,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   hue: 0
+  buriedMode: 0
 --- !u!222 &1926862818607215304
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -358,13 +359,7 @@ MonoBehaviour:
   channelID: 0
   above: {fileID: 8896119492917481193}
   level: {fileID: 5334106445466638257}
-  below: {fileID: 3749779963796665562}
   compassDot: {fileID: 1926862818868113258}
-  labels:
-  - {fileID: 1926862818999964042}
-  - {fileID: 3271392212126433286}
-  - {fileID: 6620049925295691641}
-  - {fileID: 6986515286135466229}
 --- !u!1 &1926862818868113256
 GameObject:
   m_ObjectHideFlags: 0
@@ -741,11 +736,11 @@ RectTransform:
   m_Father: {fileID: 4617246428867671087}
   m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 1, y: 1}
-  m_AnchorMax: {x: 1, y: 1}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 16, y: 16}
-  m_Pivot: {x: 1, y: 1}
+  m_Pivot: {x: 0, y: 1}
 --- !u!114 &8896119492917481193
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -759,6 +754,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   hue: 0
+  buriedMode: 0
 --- !u!222 &1594224305420755924
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -830,11 +826,11 @@ RectTransform:
   m_Father: {fileID: 2595726791112947445}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: -4, y: 0}
+  m_AnchorMin: {x: 1, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 4, y: 0}
   m_SizeDelta: {x: 96, y: 0}
-  m_Pivot: {x: 1, y: 1}
+  m_Pivot: {x: 0, y: 1}
 --- !u!222 &7769810109057730315
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -897,7 +893,7 @@ MonoBehaviour:
   m_fontSizeMin: 18
   m_fontSizeMax: 72
   m_fontStyle: 1
-  m_HorizontalAlignment: 4
+  m_HorizontalAlignment: 1
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
@@ -985,6 +981,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   hue: 0
+  buriedMode: 0
 --- !u!222 &5795539106370181040
 CanvasRenderer:
   m_ObjectHideFlags: 0
