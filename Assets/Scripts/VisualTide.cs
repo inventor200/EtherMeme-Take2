@@ -52,7 +52,8 @@ public class VisualTide : MonoBehaviour {
     private float teleportCooldown = 0;
     private PingChannel[] channels;
     private float casualSparkleTimer;
-    private float mood = 0; //TODO: Get from sample
+    [HideInInspector]
+    public EtherMood mood; //TODO: Get from sample
     private float sparkleVolumeTime = 1f;
     private float glowVolume = 0f;
 
@@ -146,7 +147,7 @@ public class VisualTide : MonoBehaviour {
             }
         }
 
-        float sparkleSpeedMult = Mathf.Lerp(1f, moodySparkMultiplier, Mathf.Clamp01(Mathf.Abs(mood)));
+        float sparkleSpeedMult = Mathf.Lerp(1f, moodySparkMultiplier, Mathf.Clamp01(Mathf.Abs(1f - mood.neutrality)));
         casualSparkleTimer -= Time.deltaTime * sparkleSpeedMult;
         if (casualSparkleTimer <= 0) {
             makeSparkles = true;
@@ -157,14 +158,14 @@ public class VisualTide : MonoBehaviour {
                 ParticleSystem.MainModule particleMain = sparkles.main;
 
                 Color sparkleColor = Color.HSVToRGB(pingHue, pingValue, 1f);
-                if (mood > 0) {
-                    sparkleColor = Color.Lerp(sparkleColor, Color.cyan, Mathf.Clamp01(mood));
-                }
-                else {
-                    sparkleColor = Color.Lerp(sparkleColor, Color.red, Mathf.Clamp01(-mood));
-                }
+                Color proTradeColor = Color.HSVToRGB(channels[0].hue, 1f, 1f);
+                Color proPiracyColor = Color.HSVToRGB(channels[1].hue, 1f, 1f);
+                Color proPredationColor = Color.HSVToRGB(channels[2].hue, 1f, 1f);
+                
+                Color tradeVsPiracyColor = Color.Lerp(proPiracyColor, proTradeColor, (mood.tradeVsPiracy + 1f) / 2f);
+                Color hospitalityVsPredationColor = Color.Lerp(proPredationColor, tradeVsPiracyColor, (mood.hospitalityVsPredation + 1f) / 2f);
 
-                particleMain.startColor = sparkleColor;
+                particleMain.startColor = Color.Lerp(hospitalityVsPredationColor, sparkleColor, mood.neutrality);
                 sparkles.Play();
             }
             ResetSparkles();

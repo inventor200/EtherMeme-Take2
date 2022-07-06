@@ -69,12 +69,20 @@ public class ColorblindUnit : MonoBehaviour {
 
     // Update is called once per frame
     void Update() {
-        int id = (int)channelID / 2;
-        ClkLED(etherSampler.channelSignals[2, id], above);
-        ClkLED(etherSampler.channelSignals[1, id], level);
-        ClkLED(etherSampler.channelSignals[0, id], below);
+        //int id = (int)channelID / 2;
+        SignalTrace seenTrace = etherSampler.playerShip.sampleCell.channelSignals[(int)channelID];
+        SignalTrace askTrace = etherSampler.playerShip.sampleCell.channelSignals[(int)channelID + 1];
+        SignalTrace levelTrace = SignalTrace.zero;
+        if (etherSampler.playerShip.altitudeProfile.hasBurialHazard) {
+            ClkLED(seenTrace, askTrace, above);
+        }
+        else {
+            ClkLED(seenTrace, askTrace, level);
+            levelTrace = seenTrace.strength > askTrace.strength ? seenTrace : askTrace;
+        }
+        
+        //ClkLED(seenTrace, askTrace, below); //FIXME: Figure out how we want to handle signals from below, if at all
 
-        SignalTrace levelTrace = etherSampler.channelSignals[1, id];
         float angle;
         float angleNoise = 120;
         switch (levelTrace.lastDirection) {
@@ -106,9 +114,9 @@ public class ColorblindUnit : MonoBehaviour {
         compassDot.rectTransform.anchoredPosition = Vector2.Lerp(currentPos, compassPos, 10 * Time.deltaTime);
     }
 
-    private void ClkLED(SignalTrace trace, UnitLED led) {
-        if (trace.hasBlink) {
-            led.Blink(trace.strength);
+    private void ClkLED(SignalTrace seenTrace, SignalTrace askTrace, UnitLED led) {
+        if (seenTrace.hasBlink || askTrace.hasBlink) {
+            led.Blink(Mathf.Max(seenTrace.strength, askTrace.strength));
         }
     }
 }

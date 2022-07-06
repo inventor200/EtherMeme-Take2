@@ -252,8 +252,6 @@ MonoBehaviour:
     hasTetherSignal: 0
     hasEasyListening: 0
     hasRestrictedVision: 1
-    canSeeUp: 1
-    canSeeDown: 0
     forcePassThrough: 0
     hasInstabilityHazard: 0
     hasBurialHazard: 1
@@ -262,6 +260,7 @@ MonoBehaviour:
     allowTideInteraction: 0
     allowControlInput: 1
     hasExclusiveEntry: 0
+    renderNPCs: 0
     tideMode: 2
     cloudAlpha: 0
     tideAlpha: 1
@@ -278,8 +277,6 @@ MonoBehaviour:
     hasTetherSignal: 0
     hasEasyListening: 0
     hasRestrictedVision: 0
-    canSeeUp: 0
-    canSeeDown: 1
     forcePassThrough: 0
     hasInstabilityHazard: 0
     hasBurialHazard: 0
@@ -288,6 +285,7 @@ MonoBehaviour:
     allowTideInteraction: 1
     allowControlInput: 1
     hasExclusiveEntry: 0
+    renderNPCs: 1
     tideMode: 0
     cloudAlpha: 0.05
     tideAlpha: 1
@@ -304,8 +302,6 @@ MonoBehaviour:
     hasTetherSignal: 0
     hasEasyListening: 0
     hasRestrictedVision: 0
-    canSeeUp: 0
-    canSeeDown: 0
     forcePassThrough: 1
     hasInstabilityHazard: 1
     hasBurialHazard: 0
@@ -314,6 +310,7 @@ MonoBehaviour:
     allowTideInteraction: 0
     allowControlInput: 1
     hasExclusiveEntry: 0
+    renderNPCs: 0
     tideMode: 0
     cloudAlpha: 0.05
     tideAlpha: 0
@@ -330,8 +327,6 @@ MonoBehaviour:
     hasTetherSignal: 1
     hasEasyListening: 1
     hasRestrictedVision: 0
-    canSeeUp: 0
-    canSeeDown: 0
     forcePassThrough: 0
     hasInstabilityHazard: 1
     hasBurialHazard: 0
@@ -340,6 +335,7 @@ MonoBehaviour:
     allowTideInteraction: 0
     allowControlInput: 1
     hasExclusiveEntry: 0
+    renderNPCs: 0
     tideMode: 1
     cloudAlpha: 0.25
     tideAlpha: 0
@@ -356,8 +352,6 @@ MonoBehaviour:
     hasTetherSignal: 1
     hasEasyListening: 0
     hasRestrictedVision: 0
-    canSeeUp: 0
-    canSeeDown: 0
     forcePassThrough: 0
     hasInstabilityHazard: 1
     hasBurialHazard: 0
@@ -366,6 +360,7 @@ MonoBehaviour:
     allowTideInteraction: 0
     allowControlInput: 0
     hasExclusiveEntry: 1
+    renderNPCs: 0
     tideMode: 1
     cloudAlpha: 0
     tideAlpha: 0
@@ -4563,6 +4558,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   halo: {fileID: 264491557}
   cruiseChannel: 0
+  skipsPhysics: 0
   postProcessor: {fileID: 672323965}
   ambientSounds: {fileID: 1342238335}
   mapDisplay: {fileID: 1362782841}

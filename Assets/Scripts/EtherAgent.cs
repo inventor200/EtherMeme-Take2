@@ -42,10 +42,13 @@ public class EtherAgent : MonoBehaviour {
 
 	public SpriteRenderer halo;
     public PingChannelID cruiseChannel;
+    [Space]
+    public bool skipsPhysics;
     public float currentAltitude { private set; get; }
     protected int goalAltitudeIndex = 1;
     public EtherAltitude altitudeProfile { private set; get; }
     public EtherAltitude altitudeBucket { private set; get; }
+    public EtherCell sampleCell { private set; get; }
     protected EtherSampler etherSampler { private set; get; }
     protected Rigidbody2D ri { private set; get; }
     public ShipSpeed currentSpeed { private set; get; } = ShipSpeed.Halted;
@@ -56,7 +59,8 @@ public class EtherAgent : MonoBehaviour {
     protected float speedScale { private set; get; }
     private bool wasInteractingWithTides;
     protected bool signalAvailabilityChanged { private set; get; }
-    protected bool isMovingIntoStandard { private set; get; }
+    protected bool allowDrawing { private set; get; }
+    //protected bool isMovingIntoStandard { private set; get; }
     protected float[] hues { private set; get; }
     private float haloSize = 2f;
     private float pingHue = 0;
@@ -74,26 +78,18 @@ public class EtherAgent : MonoBehaviour {
             EtherSampler.GetHueFromColor(etherSampler.predatorHue),
             EtherSampler.GetHueFromColor(etherSampler.freighterHue)
         };
+        sampleCell = new EtherCell(0, 0);
+        etherSampler.agents.Add(this);
     }
 
     protected void AgentStart() {
         expectedPosition = (Vector2)transform.position;
+        gameObject.layer = LayerMask.NameToLayer(skipsPhysics ? "IgnoreTides" : (altitudeProfile.allowTideInteraction ? "Standard" : "NonStandard"));
     }
 
     protected void AgentUpdate(ShipSpeed nextSpeed, Vector2 nextDirection) {
-        // Adjust halo
-        pingMagnitude = Mathf.Clamp01(pingMagnitude - (Time.deltaTime / 2f));
-        Color haloColor = Color.HSVToRGB(pingHue, 1f, pingMagnitude);
-        if (currentSpeed == ShipSpeed.Stealth) {
-            float blendInColor = 0.15f;
-            haloColor = new Color(blendInColor, blendInColor, blendInColor, 1f);
-        }
-
-        float nextSize = currentSpeed == ShipSpeed.Stealth ? 1f : 2f;
-        haloSize = Mathf.Lerp(haloSize, nextSize, 5 * Time.deltaTime);
-        halo.transform.localScale = new Vector3(haloSize, haloSize, haloSize);
-
-        halo.color = haloColor;
+        //TODO: If skipsPhysics is true, hide this object visually when the player is at a different altitude,
+        //      or if the player is in an ascended layer
 
         // Handle altitude changes
         bool didHaveSignal = altitudeProfile.hasTetherSignal;
@@ -137,31 +133,68 @@ public class EtherAgent : MonoBehaviour {
             Mathf.Repeat(expectedPosition.y, 360f)
         );
 
+        // Decide rendering
+        allowDrawing = skipsPhysics ? (
+            etherSampler.playerShip.altitudeBucket == altitudeBucket
+            && !(currentSpeed == ShipSpeed.Stealth && haloSize < 1.1f)
+            && altitudeProfile.renderNPCs
+        ) : true;
+
+        // Handle rendering
+        halo.enabled = allowDrawing;
+        if (allowDrawing) {
+            // Adjust halo
+            pingMagnitude = Mathf.Clamp01(pingMagnitude - (Time.deltaTime / 2f));
+            Color haloColor = Color.HSVToRGB(pingHue, 1f, pingMagnitude);
+            if (currentSpeed == ShipSpeed.Stealth) {
+                float blendInColor = 0.15f;
+                haloColor = new Color(blendInColor, blendInColor, blendInColor, 1f);
+            }
+
+            float nextSize = currentSpeed == ShipSpeed.Stealth ? 1f : 2f;
+            haloSize = Mathf.Lerp(haloSize, nextSize, 5 * Time.deltaTime);
+            halo.transform.localScale = new Vector3(haloSize, haloSize, haloSize);
+
+            halo.color = haloColor;
+        }
+
+        // If Agent Collision Is Implemented:
         // If this agent is not in an altitude that allows for tide interaction, but
         // is moving into one that IS, then turn on this flag.
         // Also make sure we are in a situation to botch the agent's position without
         // altering the expected position.
+        /*
         EtherAltitude goalAltitudeObject = etherSampler.altitudes[goalAltitudeIndex];
         isMovingIntoStandard = (goalAltitudeObject.allowTideInteraction
             && !altitudeProfile.allowTideInteraction
             && !altitudeProfile.hasTetherSignal
             && altitudeBucket != goalAltitudeObject);
+        */
     }
 
     protected void AgentFixedUpdate() {
-        if (wasInteractingWithTides != altitudeProfile.allowTideInteraction) {
+        if (wasInteractingWithTides != altitudeProfile.allowTideInteraction && !skipsPhysics) {
             wasInteractingWithTides = altitudeProfile.allowTideInteraction;
             gameObject.layer = LayerMask.NameToLayer(altitudeProfile.allowTideInteraction ? "Standard" : "NonStandard");
         }
 
+        /*
         if (isMovingIntoStandard) {
-            //TODO: Do a circle cast upon the Standard layer.
+            // If Agent Collision Is Implemented:
+            // Do a circle cast upon the Standard layer.
             // If we are about to collide with another Standard-layer object,
             // then forcefully alter our position to prevent collision and overlap.
+            //
+            // Otherwise, it would make it much easier to handle logic and future
+            // netcode if each player agent is the only thing that collides with
+            // tides, and everything else just pretends to and doesn't collide
+            // at all.
         }
+        */
         
         float nonStandardMass = 100000;
         float nonStandardDrag = 100f;
+        float physicsModeFactor = skipsPhysics ? 0.75f : 1f;
         if (currentSpeed == ShipSpeed.Stealth) {
             ri.mass = altitudeProfile.allowTideInteraction ? 100 : nonStandardMass;
             ri.drag = altitudeProfile.allowTideInteraction ? 0f : nonStandardDrag;
@@ -188,7 +221,7 @@ public class EtherAgent : MonoBehaviour {
                 float speed = SPEED_MODES[(int)currentSpeed][0] * altitudeProfile.moveScale;
                 expectedError += SPEED_MODES[(int)currentSpeed][1] * altitudeProfile.moveScale
                     * SPEED_MODES[(int)currentSpeed][2] * Time.fixedDeltaTime;
-                ri.AddForce(currentDirection * ri.mass * speed * dragAdjustment * Time.fixedDeltaTime);
+                ri.AddForce(currentDirection * ri.mass * speed * dragAdjustment * physicsModeFactor * Time.fixedDeltaTime);
             }
         }
 
@@ -223,10 +256,12 @@ public class EtherAgent : MonoBehaviour {
         if (id == cruiseChannel) {
             id++; // An agent will never ask about itself, but rather ask if anyone else has.
         }
-        HandlePingEffect(id);
-        pingMagnitude = 1f;
-        pingHue = hues[(int)id / 2];
-        etherSampler.RequestPing(id);
+        if (allowDrawing) {
+            HandlePingEffect(id);
+            pingMagnitude = 1f;
+            pingHue = hues[(int)id / 2];
+        }
+        etherSampler.RequestPing(this, id);
     }
 
     protected void GoToAltitude(int index) {

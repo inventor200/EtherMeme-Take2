@@ -94,7 +94,8 @@ public class CloudLayer : MonoBehaviour {
         if (etherSampler.playerShip.altitudeProfile.hasEasyListening) {
             int chosenChannel = Mathf.Clamp(Mathf.FloorToInt(hueCycle), 0, 4);
             if (chosenChannel < 4) {
-                if (etherSampler.channelSignals[1, chosenChannel].strength > 0.5f) {
+                SignalTrace channelTrace = etherSampler.store.ascendedCell.channelSignals[chosenChannel * 2];
+                if (channelTrace.strength > 0.5f) {
                     chosenColor = Color.HSVToRGB(hues[chosenChannel], 1f, 1f);
                 }
             }

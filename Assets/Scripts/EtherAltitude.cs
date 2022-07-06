@@ -36,8 +36,6 @@ public class EtherAltitude {
     public bool hasTetherSignal;
     public bool hasEasyListening;
     public bool hasRestrictedVision;
-    public bool canSeeUp;
-    public bool canSeeDown;
     public bool forcePassThrough;
     public bool hasInstabilityHazard;
     public bool hasBurialHazard;
@@ -46,6 +44,7 @@ public class EtherAltitude {
     public bool allowTideInteraction;
     public bool allowControlInput;
     public bool hasExclusiveEntry;
+    public bool renderNPCs;
     public TideMode tideMode;
     public float cloudAlpha;
     public float tideAlpha;
@@ -92,8 +91,6 @@ public class EtherAltitude {
         altitudeProfile.hasTetherSignal = level.hasTetherSignal;
         altitudeProfile.hasEasyListening = level.hasEasyListening;
         altitudeProfile.hasRestrictedVision = level.hasRestrictedVision;
-        altitudeProfile.canSeeUp = level.canSeeUp;
-        altitudeProfile.canSeeDown = level.canSeeDown;
         altitudeProfile.forcePassThrough = level.forcePassThrough;
         altitudeProfile.hasInstabilityHazard = level.hasInstabilityHazard;
         altitudeProfile.hasBurialHazard = level.hasBurialHazard;
@@ -102,6 +99,7 @@ public class EtherAltitude {
         altitudeProfile.allowTideInteraction = level.allowTideInteraction;
         altitudeProfile.allowControlInput = level.allowControlInput;
         altitudeProfile.hasExclusiveEntry = level.hasExclusiveEntry;
+        altitudeProfile.renderNPCs = level.renderNPCs;
 
         altitudeProfile.tideMode = level.tideMode;
 

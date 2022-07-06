@@ -56,7 +56,19 @@ public class EtherSampler : MonoBehaviour {
     public AmbientSounds ambientSounds;
     [Space]
     public EtherAltitude[] altitudes;
+    private float lastSparkleVolume = 0;
+    public Vector2 greaterTideDirection { private set; get; }
+    private Vector2 greaterTideSeed;
+    public ShipInEther playerShip { private set; get; }
+    public EtherStore store { private set; get; }
+    public List<EtherAgent> agents { private set; get; } = new List<EtherAgent>();
 
+    // Sampling
+    private EtherCell[,] sampleArea;
+    private SignalTrace[,] traceArea;
+    private float[,] mixFactors;
+
+    // Cached boids
     private TideEngine tideEngine;
     private Transform[] trArray;
     private Rigidbody2D[] riArray;
@@ -65,21 +77,13 @@ public class EtherSampler : MonoBehaviour {
     private SonarSortable[,] srArray;
     private Queue<SonarPing> pingRequests;
     private bool pingRequiresSort = true;
-    private float lastSparkleVolume = 0;
-    public Vector2 greaterTideDirection { private set; get; }
-    private Vector2 greaterTideSeed;
-    public ShipInEther playerShip { private set; get; }
-    public SignalTrace[,] channelSignals { private set; get; }
 
     void Awake() {
-        int channelCount = (int)PingChannelID.Count / 2;
-        channelSignals = new SignalTrace[3, channelCount];
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < channelCount; j++) {
-                channelSignals[i, j] = new SignalTrace();
-            }
-        }
+        store = new EtherStore(36);
         playerShip = playerTransform.GetComponent<ShipInEther>();
+        sampleArea = new EtherCell[3, 3];
+        traceArea = new SignalTrace[3, 3];
+        mixFactors = new float[3, 3];
     }
 
     // Start is called before the first frame update
@@ -117,10 +121,7 @@ public class EtherSampler : MonoBehaviour {
 
     // Update is called once per frame
     void Update() {
-        pingRequiresSort = true;
-        while (pingRequests.Count > 0) {
-            PingForAngle(pingRequests.Dequeue());
-        }
+        // Handle sound volumes
         float sparkleVolume = 0;
         for (int i = 0; i < startingTideCount; i++) {
             float tideVolume = cmArray[i].sparkleVolume;
@@ -134,12 +135,30 @@ public class EtherSampler : MonoBehaviour {
         lastSparkleVolume = Mathf.Lerp(lastSparkleVolume, sparkleVolume, 8 * Time.deltaTime);
         ambientSounds.sparkleVolume = lastSparkleVolume * 0.25f;
 
-        // TODO: Add signal to channelSignals according to altitude and pings
+        // Update ascended cell
+        for (int i = 0; i < agents.Count; i++) {
+            EtherAgent agent = agents[i];
+            store.ascendedCell.channelSignals[(int)agent.cruiseChannel].strength = agent.altitudeProfile.hasEasyListening ? 1f : 0f;
+        }
 
-        int channelCount = (int)PingChannelID.Count / 2;
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < channelCount; j++) {
-                channelSignals[i, j].Clk(Time.deltaTime);
+        // Clk grid
+        store.Clk(Time.deltaTime);
+
+        // Handle pings
+        pingRequiresSort = true;
+        while (pingRequests.Count > 0) {
+            PingForAngle(pingRequests.Dequeue());
+        }
+
+        // Clk agent samples
+        for (int i = 0; i < agents.Count; i++) {
+            EtherAgent agent = agents[i];
+            if (agent.altitudeProfile.hasEasyListening) {
+                store.ascendedCell.CopyTo(agent.sampleCell);
+            }
+            else {
+                PrepareSample(agent.transform.position);
+                agent.sampleCell.CollectFromSample(sampleArea, traceArea, mixFactors);
             }
         }
     }
@@ -196,15 +215,76 @@ public class EtherSampler : MonoBehaviour {
         return hue;
     }
 
-    public void RequestPing(PingChannelID id) {
-        //TODO: Calculate ping responses from environment
-        ApplyPing(PingDirection.East, PingStrength.Good, id);
+    // Cache a 3x3 area of cells and their gradients, relative to a world position
+    private void PrepareSample(Vector2 realPosition) {
+        Vector2 gradientPos = GetGradientPosFromWorldPos(realPosition);
+        Vector2Int cellPos = GetCellCoordFromGradientPos(gradientPos);
+        for (int y = cellPos.y - 1; y <= cellPos.y + 1; y++) {
+            for (int x = cellPos.x - 1; x <= cellPos.x + 1; x++) {
+                int x1 = GetSafeCellCoord(x);
+                int y1 = GetSafeCellCoord(y);
+                EtherCell selectedCell = store.cells[x1, y1];
+                sampleArea[x + 1, y + 1] = selectedCell;
+
+                mixFactors[x + 1, y + 1] = 1f - Mathf.Clamp01(GetCoordGradientDelta(
+                    gradientPos, new Vector2Int(x, y)
+                ));
+            }
+        }
     }
 
-    private void ApplyPing(PingDirection direction, PingStrength strength, PingChannelID id) {
+    private float GetCoordGradientDelta(float fromGradientCoord, int toCellCoord) {
+        // Get shortest delta position to cell
+        return Mathf.Min(
+            (float)toCellCoord - fromGradientCoord,
+            ((float)toCellCoord + (float)store.sideLength) - fromGradientCoord,
+            ((float)toCellCoord - (float)store.sideLength) - fromGradientCoord
+        );
+    }
+
+    private float GetCoordGradientDelta(Vector2 fromGradientPosition, Vector2Int toCellPosition) {
+        float dx = GetCoordGradientDelta(fromGradientPosition.x, toCellPosition.x);
+        float dy = GetCoordGradientDelta(fromGradientPosition.x, toCellPosition.x);
+        return (new Vector2(dx, dy)).magnitude;
+    }
+
+    private Vector2 GetGradientPosFromWorldPos(Vector2 realPosition) {
+        float gradientX = (realPosition.x / 360f) * store.sideLength;
+        float gradientY = (realPosition.y / 360f) * store.sideLength;
+        return new Vector2(gradientX, gradientY);
+    }
+
+    private Vector2Int GetCellCoordFromGradientPos(Vector2 gradientPosition) {
+        int x = GetSafeCellCoord(Mathf.RoundToInt(gradientPosition.x));
+        int y = GetSafeCellCoord(Mathf.RoundToInt(gradientPosition.y));
+        return new Vector2Int(x, y);
+    }
+
+    private Vector2Int GetCellCoordFromWorldPos(Vector2 realPosition) {
+        return GetCellCoordFromGradientPos(GetGradientPosFromWorldPos(realPosition));
+    }
+
+    private int GetSafeCellCoord(int coord) {
+        while (coord >= store.sideLength) coord -= store.sideLength;
+        while (coord < store.sideLength) coord += store.sideLength;
+        return coord;
+    }
+
+    public void RequestPing(EtherAgent agent, PingChannelID id) {
+        //TODO: Calculate ping responses from environment
+        ApplyPing(agent, PingDirection.East, PingStrength.Good, id);
+    }
+
+    private void ApplyPing(EtherAgent agent, PingDirection direction, PingStrength strength, PingChannelID id) {
+        //TODO: Support pings from other agents, respecting location
+        //TODO: Do not visually handle pings outside of view distance
+        //TODO: Handle pings visually every 20 frames, handling 1 agent's ping per frame
         pingRequests.Enqueue(new SonarPing(direction, strength, id));
-        if (playerShip.altitudeProfile.allowSonarPing) {
-            channelSignals[1, (int)id / 2].ApplyPing(direction, strength);
+        PrepareSample(agent.transform.position);
+        for (int y = 0; y < 3; y++) {
+            for (int x = 0; x < 3; x++) {
+                sampleArea[x, y].channelSignals[(int)id].ApplyPing(direction, strength, mixFactors[x, y]);
+            }
         }
     }
 

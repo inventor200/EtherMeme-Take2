@@ -25,7 +25,6 @@ SOFTWARE.
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.Rendering.PostProcessing;
-using UnityEngine.UI;
 using UnityEngine;
 
 public class ShipInEther : EtherAgent {

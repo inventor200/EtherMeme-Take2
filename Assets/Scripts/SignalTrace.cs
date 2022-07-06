@@ -26,6 +26,12 @@ using UnityEngine;
 
 public class SignalTrace {
 
+    public static SignalTrace zero = new SignalTrace() {
+        strength = 0,
+        _hasBlink = false,
+        lastDirection = PingDirection.Surrounding
+    };
+
     public float strength = 0;
     public bool hasBlink {
         get {
@@ -40,27 +46,51 @@ public class SignalTrace {
     private bool _hasBlink = false;
     public PingDirection lastDirection = PingDirection.Surrounding;
 
-    public void ApplyPing(PingDirection direction, PingStrength strength) {
+    public void ApplyPing(PingDirection direction, PingStrength strength, float mixFactor) {
         if (strength != PingStrength.Silent) {
             this.lastDirection = direction;
             _hasBlink = true;
+            float newStrength;
             switch(strength) {
                 case PingStrength.Weak:
                 default:
-                    this.strength = 0.5f;
+                    newStrength = 0.5f * mixFactor;
                     break;
                 case PingStrength.Good:
-                    this.strength = 0.75f;
+                    newStrength = 0.75f * mixFactor;
                     break;
                 case PingStrength.Strong:
-                    this.strength = 1f;
+                    newStrength = 1f * mixFactor;
                     break;
             }
+            this.strength = Mathf.Max(this.strength, newStrength);
         }
     }
 
     public void Clk(float dt) {
         strength = Mathf.MoveTowards(strength, 0, dt / 10f);
         _hasBlink |= (Random.Range(0, 100) < 4); //FIXME: It's bad practice to do random on every frame in a release version
+    }
+
+    public void CopyTo(SignalTrace other) {
+        other.strength = this.strength;
+        other._hasBlink = this._hasBlink;
+        other.lastDirection = this.lastDirection;
+    }
+
+    public void CollectFromSample(SignalTrace[,] sampleArea, float[,] mixAmounts, float totalMixAmount) {
+        this.lastDirection = sampleArea[1, 1].lastDirection;
+
+        float totalStrength = 0;
+        float totalBlink = 0;
+        for (int y = 0; y < 3; y++) {
+            for (int x = 0; x < 3; x++) {
+                totalStrength += sampleArea[x, y].strength * mixAmounts[x, y];
+                totalBlink += sampleArea[x, y]._hasBlink ? mixAmounts[x, y] : 0f;
+            }
+        }
+
+        this.strength = totalStrength / totalMixAmount;
+        this._hasBlink = totalBlink / totalMixAmount > 0.5f;
     }
 }
