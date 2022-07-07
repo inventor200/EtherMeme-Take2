@@ -158,14 +158,7 @@ public class VisualTide : MonoBehaviour {
                 ParticleSystem.MainModule particleMain = sparkles.main;
 
                 Color sparkleColor = Color.HSVToRGB(pingHue, pingValue, 1f);
-                Color proTradeColor = Color.HSVToRGB(channels[0].hue, 1f, 1f);
-                Color proPiracyColor = Color.HSVToRGB(channels[1].hue, 1f, 1f);
-                Color proPredationColor = Color.HSVToRGB(channels[2].hue, 1f, 1f);
-                
-                Color tradeVsPiracyColor = Color.Lerp(proPiracyColor, proTradeColor, (mood.tradeVsPiracy + 1f) / 2f);
-                Color hospitalityVsPredationColor = Color.Lerp(proPredationColor, tradeVsPiracyColor, (mood.hospitalityVsPredation + 1f) / 2f);
-
-                particleMain.startColor = Color.Lerp(hospitalityVsPredationColor, sparkleColor, mood.neutrality);
+                particleMain.startColor = mood.GetColor(etherSampler, sparkleColor);
                 sparkles.Play();
             }
             ResetSparkles();

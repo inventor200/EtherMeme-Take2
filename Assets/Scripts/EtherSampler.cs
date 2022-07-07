@@ -120,7 +120,7 @@ public class EtherSampler : MonoBehaviour {
     }
 
     // Update is called once per frame
-    void Update() {
+    void Update() { //TODO: Tide channels should be synced to cell channels, with tide delay just cutting off the front end of the time wave.
         // Handle sound volumes
         float sparkleVolume = 0;
         for (int i = 0; i < startingTideCount; i++) {
@@ -250,7 +250,7 @@ public class EtherSampler : MonoBehaviour {
         }
     }
 
-    private float GetCoordGradientDelta(float fromGradientCoord, int toCellCoord) {
+    public float GetCoordGradientDelta(float fromGradientCoord, int toCellCoord) {
         // Get shortest delta position to cell
         return Mathf.Min(
             Mathf.Abs((float)toCellCoord - fromGradientCoord),
@@ -259,29 +259,29 @@ public class EtherSampler : MonoBehaviour {
         );
     }
 
-    private float GetCoordGradientDelta(Vector2 fromGradientPosition, Vector2Int toCellPosition) {
+    public float GetCoordGradientDelta(Vector2 fromGradientPosition, Vector2Int toCellPosition) {
         float dx = GetCoordGradientDelta(fromGradientPosition.x, toCellPosition.x);
         float dy = GetCoordGradientDelta(fromGradientPosition.y, toCellPosition.y);
         return (new Vector2(dx, dy)).magnitude;
     }
 
-    private Vector2 GetGradientPosFromWorldPos(Vector2 realPosition) {
+    public Vector2 GetGradientPosFromWorldPos(Vector2 realPosition) {
         float gradientX = (realPosition.x / 360f) * store.sideLength;
         float gradientY = (realPosition.y / 360f) * store.sideLength;
         return new Vector2(gradientX, gradientY);
     }
 
-    private Vector2Int GetCellCoordFromGradientPos(Vector2 gradientPosition) {
+    public Vector2Int GetCellCoordFromGradientPos(Vector2 gradientPosition) {
         int x = GetSafeCellCoord(Mathf.RoundToInt(gradientPosition.x));
         int y = GetSafeCellCoord(Mathf.RoundToInt(gradientPosition.y));
         return new Vector2Int(x, y);
     }
 
-    private Vector2Int GetCellCoordFromWorldPos(Vector2 realPosition) {
+    public Vector2Int GetCellCoordFromWorldPos(Vector2 realPosition) {
         return GetCellCoordFromGradientPos(GetGradientPosFromWorldPos(realPosition));
     }
 
-    private int GetSafeCellCoord(int coord) {
+    public int GetSafeCellCoord(int coord) {
         while (coord >= store.sideLength) coord -= store.sideLength;
         while (coord < 0) coord += store.sideLength;
         return coord;

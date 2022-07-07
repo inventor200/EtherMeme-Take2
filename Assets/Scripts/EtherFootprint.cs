@@ -26,28 +26,13 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class EtherStore {
+public struct EtherFootprint {
 
-	public EtherCell[,] cells { private set; get; }
-    public EtherCell ascendedCell { private set; get; }
-    public int sideLength { private set; get; }
+    public PingChannelID id { private set; get; }
+    public float strength;
 
-    public EtherStore(int sideLength) {
-        this.sideLength = sideLength;
-        cells = new EtherCell[sideLength, sideLength];
-        for (int y = 0; y < sideLength; y++) {
-            for (int x = 0; x < sideLength; x++) {
-                cells[x, y] = new EtherCell(x, y);
-            }
-        }
-        ascendedCell = new EtherCell(0, 0);
-    }
-
-    public void Clk(float dt) {
-        for (int y = 0; y < sideLength; y++) {
-            for (int x = 0; x < sideLength; x++) {
-                cells[x, y].Clk(dt);
-            }
-        }
+    public EtherFootprint(PingChannelID id) {
+        this.id = id;
+        this.strength = 0;
     }
 }
